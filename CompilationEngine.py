@@ -124,7 +124,7 @@ class CompilationEngine:
 				sys.exit(1)
 			self.terminal_tag(token)
 
-			# TODO handle parameter list
+			self.compile_parameter_list()
 
 			# close parameterList
 			token = self.tokenizer.advance()
@@ -137,8 +137,6 @@ class CompilationEngine:
 
 			token = self.tokenizer.current_token()
 
-
-
 		self.close_tag('subroutineDec')
 
 	def compile_parameter_list(self):
@@ -146,22 +144,33 @@ class CompilationEngine:
 		self.open_tag('parameterList')
 
 		token = self.tokenizer.current_token()
-		while token:
+
+		# Check if the next token is a valid variable type
+		still_vars = token is not None and token.type in ['keyword', 'identifier']
+		while still_vars:
+			self.tokenizer.advance() # Don't advance to avoid eating
+			self.terminal_tag(token)
+
 			token = self.tokenizer.advance()
 			if token is None or token.type != 'identifier':
-				print('Error compiling varDec, invalid varname identifier')
+				print('Error compiling parameter, invalid varname identifier')
 				sys.exit(1)
 			self.terminal_tag(token)
 
-
-
-			# We print the token outside unless variables still exist
-			if still_vars:
+			token = self.tokenizer.current_token()
+			
+			# If there are still vars
+			if token == ('symbol', ','):
 				self.terminal_tag(token)
+				self.tokenizer.advance()
+				token = self.tokenizer.current_token()
+				still_vars = token is not None and token.type in ['keyword', 'identifier']
+			else:
+				still_vars = False
 
 		self.close_tag('parameterList')
 
-	def compile_parameter_list(self):
+	def compile_subroutine_body(self):
 		'''Compile a parameter list for a subroutine'''
 		# TODO
 		pass
