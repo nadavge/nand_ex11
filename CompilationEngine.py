@@ -133,7 +133,7 @@ class CompilationEngine:
 				sys.exit(1)
 			self.terminal_tag(token)
 
-			# TODO handle subroutine body
+			self.compile_subroutine_body()
 
 			token = self.tokenizer.current_token()
 
@@ -172,8 +172,63 @@ class CompilationEngine:
 
 	def compile_subroutine_body(self):
 		'''Compile a parameter list for a subroutine'''
-		# TODO
-		pass
+		self.open_tag('subroutineBody')
+
+		token = self.tokenizer.advance()
+		if token is None or token != ('symbol','{'):
+			print('Error compiling subroutine, missing opening parenthesis')
+			sys.exit(1)
+		self.terminal_tag(token)
+
+		self.compile_subroutine_vars()
+
+		# TODO handle statements
+
+		token = self.tokenizer.advance()
+		if token is None or token != ('symbol','}'):
+			print('Error compiling subroutine, missing closing parenthesis')
+			sys.exit(1)
+		self.terminal_tag(token)
+
+		self.close_tag('subroutineBody')
+
+	def compile_subroutine_vars(self):
+		'''Compile the variable declerations of a subroutine'''
+		self.open_tag('varDec')
+
+		token = self.tokenizer.current_token()
+
+		# Check that a variable declarations starts
+		while token is not None and token == ('keyword', 'var'):
+			self.tokenizer.advance()
+			self.terminal_tag(token)
+
+			# type
+			token = self.tokenizer.advance()
+			if token is None or token.type not in ['keyword', 'identifier']:
+				print('Error compiling subroutine vardec, invalid type')
+				sys.exit(1)
+			self.terminal_tag(token)
+			# TODO handle arrays
+
+			# name
+			token = self.tokenizer.advance()
+			if token is None or token.type != 'identifier':
+				print('Error compiling subroutine vardec, invalid varname')
+				sys.exit(1)
+			self.terminal_tag(token)
+
+			# semi-colon
+			token = self.tokenizer.advance()
+			if token is None or token != ('symbol', ';'):
+				print('Error compiling subroutine vardec, missing semi-colon')
+				sys.exit(1)
+			self.terminal_tag(token)
+
+			token = self.tokenizer.current_token()
+
+		self.close_tag('varDec')
+
 
 	def open_tag(self, name):
 		'''Open a containing tag, and indent from now on'''
