@@ -95,8 +95,76 @@ class CompilationEngine:
 	def compile_class_subroutines(self, class_name):
 		'''Compile the class subroutines'''
 		self.open_tag('subroutineDec')
-		# TODO
+		
+		token = self.tokenizer.current_token()
+		while token is not None and token.type == 'keyword'\
+				and token.value in ['constructor', 'function', 'method']:
+			self.tokenizer.advance() # Advance for same reason as in varDec
+			self.terminal_tag(token)
+
+			# function type
+			# TODO handle array function types?
+			token = self.tokenizer.advance()
+			if token is None or token.type not in ['keyword', 'identifier']:
+				print('Error compiling subroutine, invalid type')
+				sys.exit(1)
+			self.terminal_tag(token)
+
+			# name
+			token = self.tokenizer.advance()
+			if token is None or token.type != 'identifier':
+				print('Error compiling subroutine, invalid name')
+				sys.exit(1)
+			self.terminal_tag(token)
+
+			# open parameterList
+			token = self.tokenizer.advance()
+			if token is None or token != ('symbol','('):
+				print('Error compiling subroutine, missing parameterList')
+				sys.exit(1)
+			self.terminal_tag(token)
+
+			# TODO handle parameter list
+
+			# close parameterList
+			token = self.tokenizer.advance()
+			if token is None or token != ('symbol',')'):
+				print('Error compiling subroutine, missing parameterList')
+				sys.exit(1)
+			self.terminal_tag(token)
+
+			# TODO handle subroutine body
+
+			token = self.tokenizer.current_token()
+
+
+
 		self.close_tag('subroutineDec')
+
+	def compile_parameter_list(self):
+		'''Compile a parameter list for a subroutine'''
+		self.open_tag('parameterList')
+
+		token = self.tokenizer.current_token()
+		while token:
+			token = self.tokenizer.advance()
+			if token is None or token.type != 'identifier':
+				print('Error compiling varDec, invalid varname identifier')
+				sys.exit(1)
+			self.terminal_tag(token)
+
+
+
+			# We print the token outside unless variables still exist
+			if still_vars:
+				self.terminal_tag(token)
+
+		self.close_tag('parameterList')
+
+	def compile_parameter_list(self):
+		'''Compile a parameter list for a subroutine'''
+		# TODO
+		pass
 
 	def open_tag(self, name):
 		'''Open a containing tag, and indent from now on'''
@@ -112,6 +180,7 @@ class CompilationEngine:
 
 	def terminal_tag(self, token):
 		'''Write a tag to the ostream'''
+		# TODO match token type to expected string
 		self.ostream.write(' '*self.indent)
 		self.ostream.write(
 				'<{0}> {1} </{0}>\n'.format(token.type, self.sanitize(token.value))
