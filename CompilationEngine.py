@@ -15,35 +15,24 @@ class CompilationEngine:
 		'''Compile a class block'''
 		self.open_tag('class')
 
+		# class keyword
 		token = self.tokenizer.advance()
-		if token is None or token != ('keyword', 'class'):
-			print('Error compiling class, missing class token')
-			sys.exit(1)
-
 		self.terminal_tag(token)
 
+		# class name
 		token = self.tokenizer.advance()
-		if token is None or token.type != 'identifier':
-			print('Error compiling class, missing or invalid class name')
-			sys.exit(1)
-
 		self.terminal_tag(token)
 		class_name = token.value
 
+		# {
 		token = self.tokenizer.advance()
-		if token is None or token != ('symbol','{'):
-			print('Error compiling class, missing opening parenthesis')
-			sys.exit(1)
-
 		self.terminal_tag(token)
 
 		self.compile_class_vars(class_name)
 		self.compile_class_subroutines(class_name)
 
+		# }
 		token = self.tokenizer.advance()
-		if token is None or token != ('symbol','}'):
-			print('Error compiling class, missing closing parenthesis')
-			sys.exit(1)
 
 		self.terminal_tag(token)
 		self.close_tag('class')
@@ -58,21 +47,18 @@ class CompilationEngine:
 			# Advance here, to avoid eating the token in the condition above
 			# and losing the token when needed afterwards
 			self.tokenizer.advance()
+			# var scope (static/field)
 			self.terminal_tag(token)
 
+			# var type
 			token = self.tokenizer.advance()
-			if token is None or token.type not in ['keyword', 'identifier']:
-				print('Error compiling varDec, invalid type')
-				sys.exit(1)
 			self.terminal_tag(token)
 			# TODO handle arrays?
 
 			still_vars = True
 			while still_vars:
+				# var name
 				token = self.tokenizer.advance()
-				if token is None or token.type != 'identifier':
-					print('Error compiling varDec, invalid varname identifier')
-					sys.exit(1)
 				self.terminal_tag(token)
 
 				token = self.tokenizer.advance()
@@ -83,9 +69,7 @@ class CompilationEngine:
 					self.terminal_tag(token)
 
 			# Don't use advance since the ',' check already advances it
-			if token is None or token != ('symbol',';'):
-				print('Error compiling varDec, missing semi-colon')
-				sys.exit(1)
+			# semi-colon
 			self.terminal_tag(token)
 
 			token = self.tokenizer.current_token()
@@ -100,37 +84,26 @@ class CompilationEngine:
 		while token is not None and token.type == 'keyword'\
 				and token.value in ['constructor', 'function', 'method']:
 			self.tokenizer.advance() # Advance for same reason as in varDec
+			# method/constructor/function
 			self.terminal_tag(token)
 
-			# function type
+			# type
 			# TODO handle array function types?
 			token = self.tokenizer.advance()
-			if token is None or token.type not in ['keyword', 'identifier']:
-				print('Error compiling subroutine, invalid type')
-				sys.exit(1)
 			self.terminal_tag(token)
 
 			# name
 			token = self.tokenizer.advance()
-			if token is None or token.type != 'identifier':
-				print('Error compiling subroutine, invalid name')
-				sys.exit(1)
 			self.terminal_tag(token)
 
 			# open parameterList
 			token = self.tokenizer.advance()
-			if token is None or token != ('symbol','('):
-				print('Error compiling subroutine, missing parameterList')
-				sys.exit(1)
 			self.terminal_tag(token)
 
 			self.compile_parameter_list()
 
 			# close parameterList
 			token = self.tokenizer.advance()
-			if token is None or token != ('symbol',')'):
-				print('Error compiling subroutine, missing parameterList')
-				sys.exit(1)
 			self.terminal_tag(token)
 
 			self.compile_subroutine_body()
@@ -149,12 +122,11 @@ class CompilationEngine:
 		still_vars = token is not None and token.type in ['keyword', 'identifier']
 		while still_vars:
 			self.tokenizer.advance() # Don't advance to avoid eating
+			# var type
 			self.terminal_tag(token)
 
+			# var name
 			token = self.tokenizer.advance()
-			if token is None or token.type != 'identifier':
-				print('Error compiling parameter, invalid varname identifier')
-				sys.exit(1)
 			self.terminal_tag(token)
 
 			token = self.tokenizer.current_token()
@@ -174,20 +146,16 @@ class CompilationEngine:
 		'''Compile a parameter list for a subroutine'''
 		self.open_tag('subroutineBody')
 
+		# {
 		token = self.tokenizer.advance()
-		if token is None or token != ('symbol','{'):
-			print('Error compiling subroutine, missing opening parenthesis')
-			sys.exit(1)
 		self.terminal_tag(token)
 
 		self.compile_subroutine_vars()
 
 		# TODO handle statements
 
+		# }
 		token = self.tokenizer.advance()
-		if token is None or token != ('symbol','}'):
-			print('Error compiling subroutine, missing closing parenthesis')
-			sys.exit(1)
 		self.terminal_tag(token)
 
 		self.close_tag('subroutineBody')
@@ -205,30 +173,24 @@ class CompilationEngine:
 
 			# type
 			token = self.tokenizer.advance()
-			if token is None or token.type not in ['keyword', 'identifier']:
-				print('Error compiling subroutine vardec, invalid type')
-				sys.exit(1)
 			self.terminal_tag(token)
 			# TODO handle arrays
 
 			# name
 			token = self.tokenizer.advance()
-			if token is None or token.type != 'identifier':
-				print('Error compiling subroutine vardec, invalid varname')
-				sys.exit(1)
 			self.terminal_tag(token)
 
 			# semi-colon
 			token = self.tokenizer.advance()
-			if token is None or token != ('symbol', ';'):
-				print('Error compiling subroutine vardec, missing semi-colon')
-				sys.exit(1)
 			self.terminal_tag(token)
 
 			token = self.tokenizer.current_token()
 
 		self.close_tag('varDec')
 
+	def compile_subroutine_statments(self):
+		'''Compile subroutine statements'''
+		pass
 
 	def open_tag(self, name):
 		'''Open a containing tag, and indent from now on'''
