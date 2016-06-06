@@ -52,8 +52,12 @@ class CompilationEngine:
 		'''Compile the class variable declarations'''
 		self.open_tag('classVarDec')
 		
-		token = self.tokenizer.advance()
-		while token == ('keyword', 'static') or token == ('keyword', 'field'):
+		token = self.tokenizer.current_token()
+		while token is not None and token.type == 'keyword' and\
+				token.value in ['static', 'field']:
+			# Advance here, to avoid eating the token in the condition above
+			# and losing the token when needed afterwards
+			self.tokenizer.advance()
 			self.terminal_tag(token)
 
 			token = self.tokenizer.advance()
@@ -84,7 +88,7 @@ class CompilationEngine:
 				sys.exit(1)
 			self.terminal_tag(token)
 
-			token = self.tokenizer.advance()
+			token = self.tokenizer.current_token()
 
 		self.close_tag('classVarDec')
 
