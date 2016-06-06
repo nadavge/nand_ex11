@@ -10,8 +10,8 @@ class JackTokenizer:
 	# The regular expressions for lexical elements in Jack
 	RE_INTEGER ='\d+'
 	RE_STRING = '"[^"]*"'
-	RE_IDENTIFIER = '[\w_][\w\d_]*'
-	RE_SYMBOL = '\{|\}|\[|\]|\.|,|;|\+|-|\*|/|&|\||\<|\>|=|~'
+	RE_IDENTIFIER = '[A-z_]\w*'
+	RE_SYMBOL = '\{|\}|\(|\)|\[|\]|\.|,|;|\+|-|\*|/|&|\||\<|\>|=|~'
 	RE_KEYWORD = '|'.join(keyword for keyword in 
 		[
 			'class','method','constructor','function','field','static','var',
@@ -45,6 +45,7 @@ class JackTokenizer:
 		python string'''
 		self.code = JackTokenizer.remove_comments(file)
 		self.tokens = self.tokenize()
+		print(self.tokens)
 
 	def tokenize(self):
 		'''Tokenize the given input file without comments'''
