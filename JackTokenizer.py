@@ -29,7 +29,7 @@ class JackTokenizer:
 	]
 
 	# A regular expression to split between lexical components/tokens
-	RE_SPLIT = '(' + '|'.join(expr for expr in [RE_SYMBOL,RE_STRING]) + ')|\s*'
+	RE_SPLIT = '(' + '|'.join(expr for expr in [RE_SYMBOL,RE_STRING]) + ')|\s+'
 
 	@staticmethod
 	def remove_comments(file):
@@ -49,7 +49,6 @@ class JackTokenizer:
 	def tokenize(self):
 		'''Tokenize the given input file without comments'''
 		split_code = re.split(self.RE_SPLIT, self.code)
-		print(split_code)
 		tokens = []
 
 		for lex in split_code:
