@@ -51,7 +51,41 @@ class CompilationEngine:
 	def compile_class_vars(self, class_name):
 		'''Compile the class variable declarations'''
 		self.open_tag('classVarDec')
-		# TODO
+		
+		token = self.tokenizer.advance()
+		while token == ('keyword', 'static') or token == ('keyword', 'field'):
+			self.terminal_tag(token)
+
+			token = self.tokenizer.advance()
+			if token is None or token.type not in ['keyword', 'identifier']:
+				print('Error compiling varDec, invalid type')
+				sys.exit(1)
+			self.terminal_tag(token)
+			# TODO handle arrays?
+
+			still_vars = True
+			while still_vars:
+				token = self.tokenizer.advance()
+				if token is None or token.type != 'identifier':
+					print('Error compiling varDec, invalid varname identifier')
+					sys.exit(1)
+				self.terminal_tag(token)
+
+				token = self.tokenizer.advance()
+				still_vars = token == ('symbol', ',')
+
+				# We print the token outside unless variables still exist
+				if still_vars:
+					self.terminal_tag(token)
+
+			# Don't use advance since the ',' check already advances it
+			if token is None or token != ('symbol',';'):
+				print('Error compiling varDec, missing semi-colon')
+				sys.exit(1)
+			self.terminal_tag(token)
+
+			token = self.tokenizer.advance()
+
 		self.close_tag('classVarDec')
 
 	def compile_class_subroutines(self, class_name):
