@@ -68,14 +68,10 @@ class JackTokenizer:
 
 		return tokens
 
-	def has_more_tokens(self):
-		'''Check if a next token exists'''
-		return bool(self.tokens)
-
 	def current_token(self):
-		'''Return the next token'''
-		return self.tokens[0]
+		'''Return the current token, if not existent return None'''
+		return self.tokens[0] if self.tokens else None
 
 	def advance(self):
 		'''Advance to the next token, return current token'''
-		return self.tokens.pop(0)
+		return self.tokens.pop(0) if self.tokens else None
