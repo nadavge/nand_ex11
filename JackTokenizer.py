@@ -10,7 +10,7 @@ class JackTokenizer:
 	# The regular expressions for lexical elements in Jack
 	RE_INTEGER ='\d+'
 	RE_STRING = '"[^"]*"'
-	RE_IDENTIFIER = '[A-z_]\w*'
+	RE_IDENTIFIER = '[A-z_][A-z_\d]*'
 	RE_SYMBOL = '\{|\}|\(|\)|\[|\]|\.|,|;|\+|-|\*|/|&|\||\<|\>|=|~'
 	RE_KEYWORD = '|'.join(keyword for keyword in 
 		[
@@ -22,10 +22,10 @@ class JackTokenizer:
 	# A list of tuples of a regular expression and its type as string
 	LEXICAL_TYPES = [
 		(RE_KEYWORD, 'keyword'),
-		(RE_INTEGER, 'integer'),
-		(RE_STRING, 'string'),
-		(RE_IDENTIFIER, 'identifier'),
-		(RE_SYMBOL, 'symbol')
+		(RE_SYMBOL, 'symbol'),
+		(RE_INTEGER, 'integerConstant'),
+		(RE_STRING, 'stringConstant'),
+		(RE_IDENTIFIER, 'identifier')		
 	]
 
 	# A regular expression to split between lexical components/tokens
