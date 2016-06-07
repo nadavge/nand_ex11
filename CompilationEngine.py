@@ -1,10 +1,10 @@
-import sys
+import VMWriter
 from collections import namedtuple
 
 INDENT = 2
 
-ClassSymbols = namedtuple('ClassSymbols', ['type', 'num'])
-MethodSymbols = namedtuple('MethodSymbols', ['type', 'kind', 'num'])
+ClassSymbol = namedtuple('ClassSymbol', ['type', 'num'])
+MethodSymbol = namedtuple('MethodSymbol', ['type', 'kind', 'num'])
 
 binary_op_actions = {'+': 'add',
                      '-': 'sub',
@@ -16,128 +16,107 @@ binary_op_actions = {'+': 'add',
                      '>': 'gt',
                      '=': 'eq'}
 
-static_symbols = dict()
-label_count = 1
+label_count = 0
 
 class CompilationEngine:
-    '''A compilation engine for the Jack programming language'''
+    '''A compilation engine for a Jack class
+    Each class requires a *new* compilation engine'''
 
     def __init__(self, tokenizer, ostream):
         '''Initialize the compilation engine
         @tokenizer the tokenizer from the input code file
         @ostream the output stream to write the code to'''
         self.tokenizer = tokenizer
-        self.ostream = ostream
-        self.indent = 0
+        self.ostream = ostream # TODO remove ostream
+        self.vm_writer = VMWriter.VMWriter(ostream)
+
+        self.class_name = None # Will be initialized during compilation
+        self.static_symbols = dict()
+        self.field_symbols = dict()
 
     def compile_class(self):
         '''Compile a class block'''
-        self.open_tag('class')
-
         # class keyword
-        token = self.terminal_tag()
+        self.tokenizer.advance()
 
         # class name
-        token = self.terminal_tag()
-        class_name = token.value
+        token = self.tokenizer.advance()
+        self.class_name = token.value
 
         # {
-        token = self.terminal_tag()
+        self.tokenizer.advance()
 
-        class_field_symbols = self.compile_class_vars(class_name)
-        self.compile_class_subroutines(class_name, class_field_symbols)
+        self.compile_class_vars()
+        self.compile_class_subroutines()
 
         # }
-        token = self.terminal_tag()
-        self.close_tag('class')
+        self.tokenizer.advance()
 
-    def compile_class_vars(self, class_name):
+    def compile_class_vars(self):
         '''Compile the class variable declarations'''
-        global static_symbols
-
-        field_symbols = dict()
-        field_symbol_count = 1
         
         token = self.tokenizer.current_token()
         while token is not None and token.type == 'keyword' and\
                 token.value in ['static', 'field']:
-
-            #self.open_tag('classVarDec')
             # Advance here, to avoid eating the token in the condition above
             # and losing the token when needed afterwards
-
-            if(token.value == 'static'):
-                isStatic = True
-            
             self.tokenizer.advance()
-            # var scope (static/field)
-            self.terminal_tag(token, False)
+            
+            is_static = token.value == 'static'
 
             # var type
-            token = self.terminal_tag(False, False)
-            varType = toke.value
+            token = self.tokenizer.advance()
+            var_type = token.value
 
             still_vars = True
             while still_vars:
                 # var name
-                token = self.terminal_tag(False, False)
-                varName = token.value
+                token = self.tokenizer.advance()
+                var_name = token.value
 
-                if(isStatic):
-                    static_symbols[varName] = ClassSymbols(varType, len(static_symbols))
+                if is_static:
+                    self.static_symbols[var_name] = ClassSymbol(
+                            var_type, len(self.static_symbols)
+                        )
                 else:
-                    field_symbols[varName] = ClassSymbols(varType, len(static_symbols))
-                    field_symbol_count += 1
+                    self.field_symbols[var_name] = ClassSymbol(
+                            var_type, len(self.field_symbols)
+                        )
 
                 token = self.tokenizer.advance()
                 still_vars = token == ('symbol', ',')
 
-                # We print the token outside unless variables still exist
-                if still_vars:
-                    self.terminal_tag(token, False)
-
-            # Don't use advance since the ',' check already advances it
-            # semi-colon
-            self.terminal_tag(token, False)
-
+            # load next token, to check if another var declaration
             token = self.tokenizer.current_token()
 
-            #self.close_tag('classVarDec')
-
-        return field_symbols
-
-    def compile_class_subroutines(self, class_name, class_field_symbols):
+    def compile_class_subroutines(self):
         '''Compile the class subroutines'''
         
         token = self.tokenizer.current_token()
         while token is not None and token.type == 'keyword'\
                 and token.value in ['constructor', 'function', 'method']:
-            self.open_tag('subroutineDec')
             
             self.tokenizer.advance() # Advance for same reason as in varDec
-            # method/constructor/function
-            self.terminal_tag(token)
 
             # type
-            token = self.terminal_tag()
+            self.tokenizer.advance()
 
             # name
-            token = self.terminal_tag()
+            self.tokenizer.advance()
 
-            # open parameterList
-            token = self.terminal_tag()
+            # ( - open parameterList
+            self.tokenizer.advance()
 
             self.compile_parameter_list()
 
-            # close parameterList
-            token = self.terminal_tag()
+            # ) - close parameterList
+            self.tokenizer.advance()
 
-            subroutineSymbolDict = dict()
-            self.compile_subroutine_body(subroutineSymbolDict, class_field_symbols)
+            subroutine_symbol_dict = dict()
+            self.compile_subroutine_body(subroutine_symbol_dict, class_field_symbols)
 
+            # load the next token to check 
             token = self.tokenizer.current_token()
-
-            self.close_tag('subroutineDec')
 
     def compile_parameter_list(self):
         '''Compile a parameter list for a subroutine'''
@@ -168,14 +147,14 @@ class CompilationEngine:
 
         self.close_tag('parameterList')
 
-    def compile_subroutine_body(self, subroutineSymbolDict, class_field_symbols):
+    def compile_subroutine_body(self, subroutine_symbol_dict, class_field_symbols):
         '''Compile a parameter list for a subroutine'''
         #self.open_tag('subroutineBody')
 
         # {
         token = self.terminal_tag()
 
-        self.compile_subroutine_vars(subroutineSymbolDict)
+        self.compile_subroutine_vars(subroutine_symbol_dict)
 
         self.compile_statements(class_field_symbols)
 
@@ -184,7 +163,7 @@ class CompilationEngine:
 
         #self.close_tag('subroutineBody')
 
-    def compile_subroutine_vars(self, subroutineSymbolDict):
+    def compile_subroutine_vars(self, subroutine_symbol_dict):
         '''Compile the variable declerations of a subroutine'''
         token = self.tokenizer.current_token()
 
@@ -204,7 +183,7 @@ class CompilationEngine:
             # name
             token = self.terminal_tag(False, False)
             varName = token.value
-            varDict[varName] = MethodSymbols(varType, 'local', varCnt)
+            varDict[varName] = MethodSymbol(varType, 'local', varCnt)
             varCnt += 1
 
             # repeat as long as there are parameters, o.w prints the semi-colon
@@ -212,14 +191,14 @@ class CompilationEngine:
                 # name
                 token = self.terminal_tag(False, False)
                 varName = token.value
-                varDict[varName] = MethodSymbols(varType, 'var', varCnt)
+                varDict[varName] = MethodSymbol(varType, 'var', varCnt)
                 varCnt += 1
 
             token = self.tokenizer.current_token()
 
             #self.close_tag('varDec')
 
-    def compile_statements(self, class_field_symbols=None, methodSymbols=None):
+    def compile_statements(self, class_field_symbols=None, MethodSymbol=None):
         '''Compile subroutine statements'''
         self.open_tag('statements')
 
@@ -232,7 +211,7 @@ class CompilationEngine:
             elif token == ('keyword', 'while'):
                 self.compile_statement_while()
             elif token == ('keyword', 'let'):
-                self.compile_statement_let(class_field_symbols, methodSymbols)
+                self.compile_statement_let(class_field_symbols, MethodSymbol)
             elif token == ('keyword', 'do'):
                 self.compile_statement_do()
             elif token == ('keyword', 'return'):
@@ -341,7 +320,7 @@ class CompilationEngine:
 
         #self.close_tag('whileStatement')
 
-    def compile_statement_let(self, class_field_symbols, methodSymbols):
+    def compile_statement_let(self, class_field_symbols, MethodSymbol):
         '''Compile the let statment'''
         global static_symbols
         
@@ -366,8 +345,8 @@ class CompilationEngine:
 
         self.compile_expression()
 
-        if varName in methodSymbols:
-                [varType, varKind, varNum] = methodSymbols[varName]
+        if varName in MethodSymbol:
+                [varType, varKind, varNum] = MethodSymbol[varName]
         elif varName in class_field_symbols:
                 [varType, varNum] = class_field_symbols[varName]
                 varKind = "bla" #TODO: what type?
