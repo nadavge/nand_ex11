@@ -45,7 +45,6 @@ class JackTokenizer:
 		python string'''
 		self.code = JackTokenizer.remove_comments(file)
 		self.tokens = self.tokenize()
-		print(self.tokens)
 
 	def tokenize(self):
 		'''Tokenize the given input file without comments'''
