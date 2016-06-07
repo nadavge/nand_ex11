@@ -13,6 +13,10 @@ staticSymbolCnt = 0
 
 MethodSymbol = namedtuple('MethodSymbol', ['type', 'kind', 'num'])
 
+binaryOpActions = {'+': 'add', '-': 'sub', '*': 'call Math.multiply', ...
+                   '/': 'call Math.divide', '&': 'and', '|': 'or',
+                   '<': 'lt', '>': 'gt', '=': 'eq'}
+
 class CompilationEngine:
     '''A compilation engine for the Jack programming language'''
 
@@ -38,8 +42,8 @@ class CompilationEngine:
         # {
         token = self.terminal_tag()
 
-        classFieldVars = self.compile_class_vars(class_name)
-        self.compile_class_subroutines(class_name, classFieldVars)
+        classFieldSymbols = self.compile_class_vars(class_name)
+        self.compile_class_subroutines(class_name, classFieldSymbols)
 
         # }
         token = self.terminal_tag()
@@ -102,7 +106,7 @@ class CompilationEngine:
 
         return fieldSymbols
 
-    def compile_class_subroutines(self, class_name):
+    def compile_class_subroutines(self, class_name, classFieldSymbols):
         '''Compile the class subroutines'''
         
         token = self.tokenizer.current_token()
@@ -128,8 +132,8 @@ class CompilationEngine:
             # close parameterList
             token = self.terminal_tag()
 
-            subroutineVarDict = dict()
-            self.compile_subroutine_body(subroutineVarDict)
+            subroutineSymbolDict = dict()
+            self.compile_subroutine_body(subroutineSymbolDict, classFieldSymbols)
 
             token = self.tokenizer.current_token()
 
@@ -164,23 +168,23 @@ class CompilationEngine:
 
         self.close_tag('parameterList')
 
-    def compile_subroutine_body(self, varDict, classFieldVars):
+    def compile_subroutine_body(self, subroutineSymbolDict, classFieldSymbols):
         '''Compile a parameter list for a subroutine'''
         #self.open_tag('subroutineBody')
 
         # {
         token = self.terminal_tag()
 
-        self.compile_subroutine_vars(varDict)
+        self.compile_subroutine_vars(subroutineSymbolDict)
 
-        self.compile_statements(classFieldVars)
+        self.compile_statements(classFieldSymbols)
 
         # }
         token = self.terminal_tag()
 
         #self.close_tag('subroutineBody')
 
-    def compile_subroutine_vars(self, varDict):
+    def compile_subroutine_vars(self, subroutineSymbolDict):
         '''Compile the variable declerations of a subroutine'''
         token = self.tokenizer.current_token()
 
@@ -200,7 +204,7 @@ class CompilationEngine:
             # name
             token = self.terminal_tag(False, False)
             varName = token.value
-            varDict[varName] = MethodSymbol(varType, 'var', varCnt)
+            varDict[varName] = MethodSymbol(varType, 'local', varCnt)
             varCnt += 1
 
             # repeat as long as there are parameters, o.w prints the semi-colon
@@ -215,7 +219,7 @@ class CompilationEngine:
 
             #self.close_tag('varDec')
 
-    def compile_statements(self, classFieldVars=None):
+    def compile_statements(self, classFieldSymbols=None, methodSymbols=None):
         '''Compile subroutine statements'''
         self.open_tag('statements')
 
@@ -228,7 +232,7 @@ class CompilationEngine:
             elif token == ('keyword', 'while'):
                 self.compile_statement_while()
             elif token == ('keyword', 'let'):
-                self.compile_statement_let()
+                self.compile_statement_let(classFieldSymbols, methodSymbols)
             elif token == ('keyword', 'do'):
                 self.compile_statement_do()
             elif token == ('keyword', 'return'):
@@ -337,16 +341,20 @@ class CompilationEngine:
 
         #self.close_tag('whileStatement')
 
-    def compile_statement_let(self):
+    def compile_statement_let(self, classFieldSymbols, methodSymbols):
         '''Compile the let statment'''
-        self.open_tag('letStatement')
+        global staticSymbols
+        
+        #self.open_tag('letStatement')
 
         # let
-        self.terminal_tag()
+        self.terminal_tag(False, False)
 
         # var name
-        self.terminal_tag()
-        
+        token = self.terminal_tag(False, False)
+        varName = token.value
+
+        #TODO: which case is this?
         token = self.tokenizer.current_token()
         if token.value == '[':
             self.terminal_tag() # [
@@ -354,42 +362,54 @@ class CompilationEngine:
             self.terminal_tag() # ]
 
         # =
-        self.terminal_tag()
+        self.terminal_tag(False, False)
 
         self.compile_expression()
 
-        # ;
-        self.terminal_tag()
+        if(varName in methodSymbols):
+                [varType, varKind, varNum] = methodSymbols[varName]
+        elif(varName in classFieldSymbols):
+                [varType, varNum] = classFieldSymbols[varName]
+                varKind = "bla" #TODO: what type?
+        elif(varName in staticSymbols):
+                [varType, varNum] = staticSymbols[varName]
+                varKind = "static"
+        self.ostream.write("push " + varKind + " " + str(varNum))
 
-        self.close_tag('letStatement')
+        # ;
+        self.terminal_tag(False, False)
+
+        #self.close_tag('letStatement')
 
     def compile_statement_do(self):
         '''Compile the do statment'''
         self.open_tag('doStatement')
 
         # do
-        token = self.terminal_tag()
+        token = self.terminal_tag(False, False)
 
         # func name / class / var name
-        self.terminal_tag()
+        token = self.terminal_tag(False, False)
+        funcName = token.value
 
         # Check if a '.', o.w it's a '('
-        token = self.terminal_tag()
+        token = self.terminal_tag(False, False)
         if token == ('symbol', '.'):
             # function name
-            self.terminal_tag()
+            token = self.terminal_tag(False, False)
+            funcName += "." + token.value
 
             # (
-            token = self.terminal_tag()
+            token = self.terminal_tag(False, False)
 
         self.compile_expression_list()
 
         # )
-        self.terminal_tag()     
+        self.terminal_tag(False, False)
         # ;
-        self.terminal_tag()
+        self.terminal_tag(False, False)
 
-        self.close_tag('doStatement')
+        #self.close_tag('doStatement')
 
     def compile_statement_return(self):
         '''Compile the return statment'''
@@ -410,13 +430,13 @@ class CompilationEngine:
 
     def compile_expression_list(self):
         '''Compile a subroutine call expression_list'''
-        self.open_tag('expressionList')
+        #self.open_tag('expressionList')
         # Handle expression list, so long as there are expressions
         token = self.tokenizer.current_token()
 
         while token != ('symbol', ')'):
             if token == ('symbol', ','):
-                self.terminal_tag()
+                self.terminal_tag(False, False)
             else:
                 self.compile_expression()
             token = self.tokenizer.current_token()
@@ -425,32 +445,41 @@ class CompilationEngine:
 
     def compile_expression(self):
         '''Compile an expression'''
-        self.open_tag('expression')
+        #self.open_tag('expression')
 
+        #TODO: push
         self.compile_term()
         
         token = self.tokenizer.current_token()
-        print(token)
         while token.value in '+-*/&|<>=':
-            self.terminal_tag()
+            binaryOp = token.value
+            #self.terminal_tag(False, False)
+            
             self.compile_term()
-            token = self.tokenizer.current_token()
+            self.ostream.write(binaryOpActions[binaryOp])
 
-        self.close_tag('expression')
+            token = self.terminal_tag(False, False)
+            #token = self.tokenizer.current_token()
+
+        #self.close_tag('expression')
 
     def compile_term(self):
         '''Compile a term as part of an expression'''
-        self.open_tag('term')
+        #self.open_tag('term')
 
-        token = self.terminal_tag()
+        token = self.terminal_tag(False, False)
 
         # In case of unary operator, compile the term after the operator
         if token.type == 'symbol' and token.value in ['-', '~']:
             self.compile_term()
+            if(token.value == '-'):
+                self.ostream.write('neg')
+            elif(token.value == '~'):
+                self.ostream.write('not')
         # In case of opening parenthesis for an expression
         elif token.value == '(':
             self.compile_expression()
-            self.terminal_tag() # )
+            self.terminal_tag(False, False) # )
         # In case of a function call or variable name
         elif token.type == 'identifier':
             token = self.tokenizer.current_token()
@@ -469,7 +498,7 @@ class CompilationEngine:
                     self.compile_expression_list()
                     self.terminal_tag() # )
 
-        self.close_tag('term')
+        #self.close_tag('term')
 
     def open_tag(self, name):
         '''Open a containing tag, and indent from now on'''
