@@ -16,25 +16,20 @@ class CompilationEngine:
 		self.open_tag('class')
 
 		# class keyword
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 
 		# class name
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 		class_name = token.value
 
 		# {
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 
 		self.compile_class_vars(class_name)
 		self.compile_class_subroutines(class_name)
 
 		# }
-		token = self.tokenizer.advance()
-
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 		self.close_tag('class')
 
 	def compile_class_vars(self, class_name):
@@ -51,15 +46,13 @@ class CompilationEngine:
 			self.terminal_tag(token)
 
 			# var type
-			token = self.tokenizer.advance()
-			self.terminal_tag(token)
+			token = self.terminal_tag()
 			# TODO handle arrays?
 
 			still_vars = True
 			while still_vars:
 				# var name
-				token = self.tokenizer.advance()
-				self.terminal_tag(token)
+				token = self.terminal_tag()
 
 				token = self.tokenizer.advance()
 				still_vars = token == ('symbol', ',')
@@ -89,22 +82,18 @@ class CompilationEngine:
 
 			# type
 			# TODO handle array function types?
-			token = self.tokenizer.advance()
-			self.terminal_tag(token)
+			token = self.terminal_tag()
 
 			# name
-			token = self.tokenizer.advance()
-			self.terminal_tag(token)
+			token = self.terminal_tag()
 
 			# open parameterList
-			token = self.tokenizer.advance()
-			self.terminal_tag(token)
+			token = self.terminal_tag()
 
 			self.compile_parameter_list()
 
 			# close parameterList
-			token = self.tokenizer.advance()
-			self.terminal_tag(token)
+			token = self.terminal_tag()
 
 			self.compile_subroutine_body()
 
@@ -126,8 +115,7 @@ class CompilationEngine:
 			self.terminal_tag(token)
 
 			# var name
-			token = self.tokenizer.advance()
-			self.terminal_tag(token)
+			token = self.terminal_tag()
 
 			token = self.tokenizer.current_token()
 			
@@ -147,16 +135,14 @@ class CompilationEngine:
 		self.open_tag('subroutineBody')
 
 		# {
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 
 		self.compile_subroutine_vars()
 
 		self.compile_statements()
 
 		# }
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 
 		self.close_tag('subroutineBody')
 
@@ -172,17 +158,14 @@ class CompilationEngine:
 			self.terminal_tag(token)
 
 			# type
-			token = self.tokenizer.advance()
-			self.terminal_tag(token)
+			token = self.terminal_tag()
 			# TODO handle arrays
 
 			# name
-			token = self.tokenizer.advance()
-			self.terminal_tag(token)
+			token = self.terminal_tag()
 
 			# semi-colon
-			token = self.tokenizer.advance()
-			self.terminal_tag(token)
+			token = self.terminal_tag()
 
 			token = self.tokenizer.current_token()
 
@@ -216,28 +199,23 @@ class CompilationEngine:
 		self.open_tag('ifStatement')
 
 		# if
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 		# (
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 		
 		self.compile_expression()
 
 		# )
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 
 		# {
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 
 		# Compile inner statements
 		self.compile_statements()
 
 		# }
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 
 		token = self.tokenizer.current_token()
 		if token == ('keyword', 'else'):
@@ -245,25 +223,21 @@ class CompilationEngine:
 			self.tokenizer.advance()
 			self.terminal_tag(token)
 			# (
-			token = self.tokenizer.advance()
-			self.terminal_tag(token)
+			token = self.terminal_tag()
 			
 			self.compile_expression()
 
 			# )
-			token = self.tokenizer.advance()
-			self.terminal_tag(token)
+			token = self.terminal_tag()
 
 			# {
-			token = self.tokenizer.advance()
-			self.terminal_tag(token)
+			token = self.terminal_tag()
 
 			# Compile inner statements
 			self.compile_statements()
 
 			# }
-			token = self.tokenizer.advance()
-			self.terminal_tag(token)
+			token = self.terminal_tag()
 
 		self.close_tag('ifStatement')
 
@@ -272,28 +246,23 @@ class CompilationEngine:
 		self.open_tag('whileStatement')
 
 		# while
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 		# (
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 		
 		self.compile_expression()
 
 		# )
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 
 		# {
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 
 		# Compile inner statements
 		self.compile_statements()
 
 		# }
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 
 		self.close_tag('whileStatement')
 
@@ -302,24 +271,20 @@ class CompilationEngine:
 		self.open_tag('letStatement')
 
 		# let
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 
 		# var name
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 
 		# TODO handle arrays
 
 		# =
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 
 		self.compile_expression()
 
 		# ;
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 
 		self.close_tag('letStatement')
 
@@ -328,42 +293,26 @@ class CompilationEngine:
 		self.open_tag('doStatement')
 
 		# do
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 
 		# func name / class / var name
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		self.terminal_tag()
 
 		# Check if a '.', o.w it's a '('
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 		if token == ('symbol', '.'):
-			# get function name
-			token = self.tokenizer.advance()
-			self.terminal_tag(token)
+			# function name
+			self.terminal_tag()
 
-			# get to (
-			token = self.tokenizer.advance()
-			self.terminal_tag(token)
-		
-		# Handle expression list, so long as there are expressions
-		token = self.tokenizer.current_token()
+			# (
+			token = self.terminal_tag()
 
-		while token != ('symbol', ')'):
-			self.compile_expression()
-
-			token = self.tokenizer.advance()
-			# In case of seperator, print it
-			if token == ('symbol', ','):
-				self.terminal_tag(token)
+		self.compile_expression_list()
 
 		# )
-		self.terminal_tag(token)		
-
+		self.terminal_tag()		
 		# ;
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		self.terminal_tag()
 
 		self.close_tag('doStatement')
 
@@ -372,8 +321,7 @@ class CompilationEngine:
 		self.open_tag('returnStatement')
 
 		# return
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 
 		# Check if an expression is given
 		token = self.tokenizer.current_token()
@@ -381,14 +329,60 @@ class CompilationEngine:
 			self.compile_expression()
 
 		# ;
-		token = self.tokenizer.advance()
-		self.terminal_tag(token)
+		token = self.terminal_tag()
 
 		self.open_tag('returnStatement')
 
+	def compile_expression_list(self):
+		'''Compile a subroutine call expression_list'''
+		
+		# Handle expression list, so long as there are expressions
+		token = self.tokenizer.current_token()
+
+		while token != ('symbol', ')'):
+			if token == ('symbol', ','):
+				self.terminal_tag()
+			else:
+				self.compile_expression()
+			token = self.tokenizer.current_token()
+
 	def compile_expression(self):
 		'''Compile an expression'''
-		pass
+		self.open_tag('expression')
+
+		self.compile_term()
+		# TODO continue
+
+		self.close_tag('expression')
+
+	def compile_term(self):
+		'''Compile a term as part of an expression'''
+		token = self.terminal_tag()
+
+		# In case of unary operator, compile the term after the operator
+		if token.type == 'symbol' and token.value in ['-', '~']:
+			self.compile_term()
+		# In case of opening parenthesis for an expression
+		elif token.value == '(':
+			self.compile_expression()
+			self.terminal_tag() # )
+		# In case of a function call or variable name
+		elif token.type == 'identifier':
+			token = self.tokenizer.current_token()
+			if token == '[': # Array
+				self.terminal_tag() # [
+				self.compile_expression()
+				self.terminal_tag() # ]
+			else:
+				if token.value == '.':
+					self.terminal_tag() # .
+					self.terminal_tag() # function name
+					token = self.tokenizer.current_token()
+
+				if token.value == '(':
+					self.terminal_tag() # (
+					self.compile_expression_list()
+					self.terminal_tag() # )
 
 	def open_tag(self, name):
 		'''Open a containing tag, and indent from now on'''
@@ -402,13 +396,19 @@ class CompilationEngine:
 		self.ostream.write(' '*self.indent)
 		self.ostream.write('</{}>\n'.format(name))
 
-	def terminal_tag(self, token):
-		'''Write a tag to the ostream'''
+	def terminal_tag(self, token=None):
+		'''Write a tag to the ostream, if a token is not provided
+		use current token and advance the tokenizer. return the token'''
 		# TODO match token type to expected string
+		if token is None:
+			token = self.tokenizer.advance()
+
 		self.ostream.write(' '*self.indent)
 		self.ostream.write(
 				'<{0}> {1} </{0}>\n'.format(token.type, self.sanitize(token.value))
 			)
+
+		return token
 
 	@staticmethod
 	def sanitize(value):
