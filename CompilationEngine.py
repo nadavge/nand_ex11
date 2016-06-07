@@ -269,19 +269,122 @@ class CompilationEngine:
 
 	def compile_statement_while(self):
 		'''Compile the while statment'''
-		pass
+		self.open_tag('whileStatement')
+
+		# while
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+		# (
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+		
+		self.compile_expression()
+
+		# )
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+
+		# {
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+
+		# Compile inner statements
+		self.compile_statements()
+
+		# }
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+
+		self.close_tag('whileStatement')
 
 	def compile_statement_let(self):
 		'''Compile the let statment'''
-		pass
+		self.open_tag('letStatement')
+
+		# let
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+
+		# var name
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+
+		# TODO handle arrays
+
+		# =
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+
+		self.compile_expression()
+
+		# ;
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+
+		self.close_tag('letStatement')
 
 	def compile_statement_do(self):
 		'''Compile the do statment'''
-		pass
+		self.open_tag('doStatement')
+
+		# do
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+
+		# func name / class / var name
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+
+		# Check if a '.', o.w it's a '('
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+		if token == ('symbol', '.'):
+			# get function name
+			token = self.tokenizer.advance()
+			self.terminal_tag(token)
+
+			# get to (
+			token = self.tokenizer.advance()
+			self.terminal_tag(token)
+		
+		# Handle expression list, so long as there are expressions
+		token = self.tokenizer.current_token()
+
+		while token != ('symbol', ')'):
+			self.compile_expression()
+
+			token = self.tokenizer.advance()
+			# In case of seperator, print it
+			if token == ('symbol', ','):
+				self.terminal_tag(token)
+
+		# )
+		self.terminal_tag(token)		
+
+		# ;
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+
+		self.close_tag('doStatement')
 
 	def compile_statement_return(self):
 		'''Compile the return statment'''
-		pass
+		self.open_tag('returnStatement')
+
+		# return
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+
+		# Check if an expression is given
+		token = self.tokenizer.current_token()
+		if token != ('symbol', ';'):
+			self.compile_expression()
+
+		# ;
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+
+		self.open_tag('returnStatement')
 
 	def compile_expression(self):
 		'''Compile an expression'''
