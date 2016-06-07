@@ -33,8 +33,7 @@ class CompilationEngine:
         self.tokenizer.advance()
 
         # class name
-        token = self.tokenizer.advance()
-        class_name = token.value
+        class_name = self.tokenizer.advance().value
         jack_class = CompilationTypes.JackClass(class_name)
 
         # {
@@ -59,14 +58,12 @@ class CompilationEngine:
             is_static = token.value == 'static'
 
             # var type
-            token = self.tokenizer.advance()
-            var_type = token.value
+            var_type = self.tokenizer.advance().value
 
             still_vars = True
             while still_vars:
                 # var name
-                token = self.tokenizer.advance()
-                var_name = token.value
+                var_name = self.tokenizer.advance().value
 
                 if is_static:
                     jack_class.add_static(var_name, var_type)
@@ -87,14 +84,11 @@ class CompilationEngine:
                 and token.value in ['constructor', 'function', 'method']:
             
             # Advance for same reason as in varDec
-            token = self.tokenizer.advance()
-            subroutine_type = token.value
+            subroutine_type = self.tokenizer.advance().value
             # return type
-            token = self.tokenizer.advance()
-            return_type = token.value
+            return_type = self.tokenizer.advance().value
             # name
-            token = self.tokenizer.advance()
-            name = token.value
+            name = self.tokenizer.advance().value
 
             jack_subroutine = CompilationTypes.JackSubroutine(
                     name, subroutine_type, return_type, jack_class
@@ -117,23 +111,21 @@ class CompilationEngine:
         '''Compile a parameter list for a subroutine'''
 
         token = self.tokenizer.current_token()
-
         # Check if the next token is a valid variable type
         still_vars = token is not None and token.type in ['keyword', 'identifier']
         while still_vars:
-            self.tokenizer.advance() # Don't advance to avoid eating
-            # var type
-            self.terminal_tag(token)
+            # param type
+            token = self.tokenizer.advance() # Don't advance to avoid eating
+            param_type = token.value
+            # param name
+            param_name = self.tokenizer.advance().value
 
-            # var name
-            token = self.terminal_tag()
+            jack_subroutine.add_arg(param_name, param_type)
 
             token = self.tokenizer.current_token()
-            
             # If there are still vars
             if token == ('symbol', ','):
-                self.terminal_tag(token)
-                self.tokenizer.advance()
+                self.tokenizer.advance() # Throw the ',' away
                 token = self.tokenizer.current_token()
                 still_vars = token is not None and token.type in ['keyword', 'identifier']
             else:
@@ -141,57 +133,38 @@ class CompilationEngine:
 
 
     def compile_subroutine_body(self, jack_subroutine):
-        '''Compile a parameter list for a subroutine'''
-        #self.open_tag('subroutineBody')
+        '''Compile the subroutine body'''
 
-        # {
-        token = self.terminal_tag()
+        self.tokenizer.advance() # {
 
-        self.compile_subroutine_vars(subroutine_symbol_dict)
+        self.compile_subroutine_vars(jack_subroutine)
+        self.compile_statements(jack_subroutine)
 
-        self.compile_statements(class_field_symbols)
+        self.tokenizer.advance() # }
 
-        # }
-        token = self.terminal_tag()
-
-        #self.close_tag('subroutineBody')
-
-    def compile_subroutine_vars(self, subroutine_symbol_dict):
+    def compile_subroutine_vars(self, jack_subroutine):
         '''Compile the variable declerations of a subroutine'''
+
         token = self.tokenizer.current_token()
-
-        varCnt = 1
-
         # Check that a variable declarations starts
         while token is not None and token == ('keyword', 'var'):
-            #self.open_tag('varDec')
+            self.tokenizer.advance()
+            # var_type
+            var_type = self.tokenizer.advance().value
+            # var_name
+            var_name = self.tokenizer.advance().value
 
-            token = self.terminal_tag(False, False)
-            # TODO: bug, for some reason pops "False"
+            jack_subroutine.add_var(var_name, var_type)
 
-            # type
-            token = self.terminal_tag(False, False)
-            varType = token.value
-
-            # name
-            token = self.terminal_tag(False, False)
-            varName = token.value
-            varDict[varName] = MethodSymbol(varType, 'local', varCnt)
-            varCnt += 1
-
-            # repeat as long as there are parameters, o.w prints the semi-colon
-            while self.terminal_tag().value == ',':
-                # name
-                token = self.terminal_tag(False, False)
-                varName = token.value
-                varDict[varName] = MethodSymbol(varType, 'var', varCnt)
-                varCnt += 1
+            # repeat as long as there are parameters, o.w eats the semi-colon
+            while self.tokenizer.advance().value == ',':
+                # var_name
+                var_name = self.tokenizer.advance().value
+                jack_subroutine.add_var(var_name, var_type)
 
             token = self.tokenizer.current_token()
 
-            #self.close_tag('varDec')
-
-    def compile_statements(self, class_field_symbols=None, MethodSymbol=None):
+    def compile_statements(self, jack_subroutine):
         '''Compile subroutine statements'''
         self.open_tag('statements')
 
