@@ -152,7 +152,7 @@ class CompilationEngine:
 
 		self.compile_subroutine_vars()
 
-		# TODO handle statements
+		self.compile_statements()
 
 		# }
 		token = self.tokenizer.advance()
@@ -188,8 +188,103 @@ class CompilationEngine:
 
 		self.close_tag('varDec')
 
-	def compile_subroutine_statments(self):
+	def compile_statements(self):
 		'''Compile subroutine statements'''
+		self.open_tag('statements')
+
+		check_statements = True
+		while check_statements:
+			token = self.tokenizer.current_token()
+
+			if token == ('keyword', 'if'):
+				self.compile_statement_if()
+			elif token == ('keyword', 'while'):
+				self.compile_statement_while()
+			elif token == ('keyword', 'let'):
+				self.compile_statement_let()
+			elif token == ('keyword', 'do'):
+				self.compile_statement_do()
+			elif token == ('keyword', 'return'):
+				self.compile_statement_return()
+			else:
+				check_statements = False
+
+		self.close_tag('statements')
+
+	def compile_statement_if(self):
+		'''Compile the if statment'''
+		self.open_tag('ifStatement')
+
+		# if
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+		# (
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+		
+		self.compile_expression()
+
+		# )
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+
+		# {
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+
+		# Compile inner statements
+		self.compile_statements()
+
+		# }
+		token = self.tokenizer.advance()
+		self.terminal_tag(token)
+
+		token = self.tokenizer.current_token()
+		if token == ('keyword', 'else'):
+			# else
+			self.tokenizer.advance()
+			self.terminal_tag(token)
+			# (
+			token = self.tokenizer.advance()
+			self.terminal_tag(token)
+			
+			self.compile_expression()
+
+			# )
+			token = self.tokenizer.advance()
+			self.terminal_tag(token)
+
+			# {
+			token = self.tokenizer.advance()
+			self.terminal_tag(token)
+
+			# Compile inner statements
+			self.compile_statements()
+
+			# }
+			token = self.tokenizer.advance()
+			self.terminal_tag(token)
+
+		self.close_tag('ifStatement')
+
+	def compile_statement_while(self):
+		'''Compile the while statment'''
+		pass
+
+	def compile_statement_let(self):
+		'''Compile the let statment'''
+		pass
+
+	def compile_statement_do(self):
+		'''Compile the do statment'''
+		pass
+
+	def compile_statement_return(self):
+		'''Compile the return statment'''
+		pass
+
+	def compile_expression(self):
+		'''Compile an expression'''
 		pass
 
 	def open_tag(self, name):
