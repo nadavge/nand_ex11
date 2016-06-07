@@ -351,12 +351,19 @@ class CompilationEngine:
 		self.open_tag('expression')
 
 		self.compile_term()
-		# TODO continue
+		
+		token = self.tokenizer.current_token()
+		while token.value in '+-*/&|<>=':
+			self.terminal_tag()
+			self.compile_term()
+			token = self.tokenizer.current_token()
 
 		self.close_tag('expression')
 
 	def compile_term(self):
 		'''Compile a term as part of an expression'''
+		self.open_tag('term')
+
 		token = self.terminal_tag()
 
 		# In case of unary operator, compile the term after the operator
@@ -384,6 +391,8 @@ class CompilationEngine:
 					self.compile_expression_list()
 					self.terminal_tag() # )
 
+		self.close_tag('term')
+
 	def open_tag(self, name):
 		'''Open a containing tag, and indent from now on'''
 		self.ostream.write(' '*self.indent)
@@ -405,15 +414,20 @@ class CompilationEngine:
 
 		self.ostream.write(' '*self.indent)
 		self.ostream.write(
-				'<{0}> {1} </{0}>\n'.format(token.type, self.sanitize(token.value))
+				'<{0}> {1} </{0}>\n'.format(token.type, self.sanitize(token))
 			)
 
 		return token
 
 	@staticmethod
-	def sanitize(value):
-		'''Sanitize the given input to allow writing to XML'''
-		if value == '<':
+	def sanitize(token):
+		'''Sanitize the given input to allow writing to XML, return
+		the tokens santized value'''
+		value = token.value
+
+		if token.type == 'stringConstant':
+			return value[1:-1]
+		elif value == '<':
 			return '&lt;'
 		elif value == '>':
 			return '&gt;'
