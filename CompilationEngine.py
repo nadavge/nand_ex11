@@ -1,5 +1,7 @@
 import sys
 
+INDENT = 2
+
 class CompilationEngine:
 	'''A compilation engine for the Jack programming language'''
 
@@ -34,11 +36,12 @@ class CompilationEngine:
 
 	def compile_class_vars(self, class_name):
 		'''Compile the class variable declarations'''
-		self.open_tag('classVarDec')
 		
 		token = self.tokenizer.current_token()
 		while token is not None and token.type == 'keyword' and\
 				token.value in ['static', 'field']:
+
+			self.open_tag('classVarDec')
 			# Advance here, to avoid eating the token in the condition above
 			# and losing the token when needed afterwards
 			self.tokenizer.advance()
@@ -47,7 +50,6 @@ class CompilationEngine:
 
 			# var type
 			token = self.terminal_tag()
-			# TODO handle arrays?
 
 			still_vars = True
 			while still_vars:
@@ -67,21 +69,21 @@ class CompilationEngine:
 
 			token = self.tokenizer.current_token()
 
-		self.close_tag('classVarDec')
+			self.close_tag('classVarDec')
 
 	def compile_class_subroutines(self, class_name):
 		'''Compile the class subroutines'''
-		self.open_tag('subroutineDec')
 		
 		token = self.tokenizer.current_token()
 		while token is not None and token.type == 'keyword'\
 				and token.value in ['constructor', 'function', 'method']:
+			self.open_tag('subroutineDec')
+			
 			self.tokenizer.advance() # Advance for same reason as in varDec
 			# method/constructor/function
 			self.terminal_tag(token)
 
 			# type
-			# TODO handle array function types?
 			token = self.terminal_tag()
 
 			# name
@@ -99,7 +101,7 @@ class CompilationEngine:
 
 			token = self.tokenizer.current_token()
 
-		self.close_tag('subroutineDec')
+			self.close_tag('subroutineDec')
 
 	def compile_parameter_list(self):
 		'''Compile a parameter list for a subroutine'''
@@ -148,28 +150,28 @@ class CompilationEngine:
 
 	def compile_subroutine_vars(self):
 		'''Compile the variable declerations of a subroutine'''
-		self.open_tag('varDec')
-
 		token = self.tokenizer.current_token()
 
 		# Check that a variable declarations starts
 		while token is not None and token == ('keyword', 'var'):
-			self.tokenizer.advance()
-			self.terminal_tag(token)
+			self.open_tag('varDec')
+
+			self.terminal_tag()
 
 			# type
-			token = self.terminal_tag()
-			# TODO handle arrays
+			self.terminal_tag()
 
 			# name
-			token = self.terminal_tag()
+			self.terminal_tag()
 
-			# semi-colon
-			token = self.terminal_tag()
+			# repeat as long as there are parameters, o.w prints the semi-colon
+			while self.terminal_tag().value == ',':
+				# name
+				self.terminal_tag()
 
 			token = self.tokenizer.current_token()
 
-		self.close_tag('varDec')
+			self.close_tag('varDec')
 
 	def compile_statements(self):
 		'''Compile subroutine statements'''
@@ -271,20 +273,24 @@ class CompilationEngine:
 		self.open_tag('letStatement')
 
 		# let
-		token = self.terminal_tag()
+		self.terminal_tag()
 
 		# var name
-		token = self.terminal_tag()
-
-		# TODO handle arrays
+		self.terminal_tag()
+		
+		token = self.tokenizer.current_token()
+		if token.value == '[':
+			self.terminal_tag() # [
+			self.compile_expression()
+			self.terminal_tag() # ]
 
 		# =
-		token = self.terminal_tag()
+		self.terminal_tag()
 
 		self.compile_expression()
 
 		# ;
-		token = self.terminal_tag()
+		self.terminal_tag()
 
 		self.close_tag('letStatement')
 
@@ -331,11 +337,11 @@ class CompilationEngine:
 		# ;
 		token = self.terminal_tag()
 
-		self.open_tag('returnStatement')
+		self.close_tag('returnStatement')
 
 	def compile_expression_list(self):
 		'''Compile a subroutine call expression_list'''
-		
+		self.open_tag('expressionList')
 		# Handle expression list, so long as there are expressions
 		token = self.tokenizer.current_token()
 
@@ -345,6 +351,8 @@ class CompilationEngine:
 			else:
 				self.compile_expression()
 			token = self.tokenizer.current_token()
+
+		self.close_tag('expressionList')
 
 	def compile_expression(self):
 		'''Compile an expression'''
@@ -376,7 +384,7 @@ class CompilationEngine:
 		# In case of a function call or variable name
 		elif token.type == 'identifier':
 			token = self.tokenizer.current_token()
-			if token == '[': # Array
+			if token.value == '[': # Array
 				self.terminal_tag() # [
 				self.compile_expression()
 				self.terminal_tag() # ]
@@ -397,18 +405,17 @@ class CompilationEngine:
 		'''Open a containing tag, and indent from now on'''
 		self.ostream.write(' '*self.indent)
 		self.ostream.write('<{}>\n'.format(name))
-		self.indent += 2
+		self.indent += INDENT
 
 	def close_tag(self, name):
 		'''Close an open tag, and decrease the indentation level'''
-		self.indent -= 2
+		self.indent -= INDENT
 		self.ostream.write(' '*self.indent)
 		self.ostream.write('</{}>\n'.format(name))
 
 	def terminal_tag(self, token=None):
 		'''Write a tag to the ostream, if a token is not provided
 		use current token and advance the tokenizer. return the token'''
-		# TODO match token type to expected string
 		if token is None:
 			token = self.tokenizer.advance()
 
