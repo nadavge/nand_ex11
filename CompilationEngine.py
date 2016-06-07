@@ -1,10 +1,8 @@
 import VMWriter
+import CompilationTypes
 from collections import namedtuple
 
 INDENT = 2
-
-ClassSymbol = namedtuple('ClassSymbol', ['type', 'num'])
-MethodSymbol = namedtuple('MethodSymbol', ['type', 'kind', 'num'])
 
 binary_op_actions = {'+': 'add',
                      '-': 'sub',
@@ -19,8 +17,7 @@ binary_op_actions = {'+': 'add',
 label_count = 0
 
 class CompilationEngine:
-    '''A compilation engine for a Jack class
-    Each class requires a *new* compilation engine'''
+    '''A compilation engine for the Jack programming language'''
 
     def __init__(self, tokenizer, ostream):
         '''Initialize the compilation engine
@@ -30,10 +27,6 @@ class CompilationEngine:
         self.ostream = ostream # TODO remove ostream
         self.vm_writer = VMWriter.VMWriter(ostream)
 
-        self.class_name = None # Will be initialized during compilation
-        self.static_symbols = dict()
-        self.field_symbols = dict()
-
     def compile_class(self):
         '''Compile a class block'''
         # class keyword
@@ -41,18 +34,19 @@ class CompilationEngine:
 
         # class name
         token = self.tokenizer.advance()
-        self.class_name = token.value
+        class_name = token.value
+        jack_class = CompilationTypes.JackClass(class_name)
 
         # {
         self.tokenizer.advance()
 
-        self.compile_class_vars()
-        self.compile_class_subroutines()
+        self.compile_class_vars(jack_class)
+        self.compile_class_subroutines(jack_class)
 
         # }
         self.tokenizer.advance()
 
-    def compile_class_vars(self):
+    def compile_class_vars(self, jack_class):
         '''Compile the class variable declarations'''
         
         token = self.tokenizer.current_token()
@@ -75,13 +69,9 @@ class CompilationEngine:
                 var_name = token.value
 
                 if is_static:
-                    self.static_symbols[var_name] = ClassSymbol(
-                            var_type, len(self.static_symbols)
-                        )
+                    jack_class.add_static(var_name, var_type)
                 else:
-                    self.field_symbols[var_name] = ClassSymbol(
-                            var_type, len(self.field_symbols)
-                        )
+                    jack_class.add_field(var_name, var_type)
 
                 token = self.tokenizer.advance()
                 still_vars = token == ('symbol', ',')
@@ -89,38 +79,42 @@ class CompilationEngine:
             # load next token, to check if another var declaration
             token = self.tokenizer.current_token()
 
-    def compile_class_subroutines(self):
+    def compile_class_subroutines(self, jack_class):
         '''Compile the class subroutines'''
         
         token = self.tokenizer.current_token()
         while token is not None and token.type == 'keyword'\
                 and token.value in ['constructor', 'function', 'method']:
             
-            self.tokenizer.advance() # Advance for same reason as in varDec
-
-            # type
-            self.tokenizer.advance()
-
+            # Advance for same reason as in varDec
+            token = self.tokenizer.advance()
+            subroutine_type = token.value
+            # return type
+            token = self.tokenizer.advance()
+            return_type = token.value
             # name
-            self.tokenizer.advance()
+            token = self.tokenizer.advance()
+            name = token.value
+
+            jack_subroutine = CompilationTypes.JackSubroutine(
+                    name, subroutine_type, return_type, jack_class
+                )
 
             # ( - open parameterList
             self.tokenizer.advance()
 
-            self.compile_parameter_list()
+            self.compile_parameter_list(jack_subroutine)
 
             # ) - close parameterList
             self.tokenizer.advance()
 
-            subroutine_symbol_dict = dict()
-            self.compile_subroutine_body(subroutine_symbol_dict, class_field_symbols)
+            self.compile_subroutine_body(jack_subroutine)
 
             # load the next token to check 
             token = self.tokenizer.current_token()
 
-    def compile_parameter_list(self):
+    def compile_parameter_list(self, jack_subroutine):
         '''Compile a parameter list for a subroutine'''
-        self.open_tag('parameterList')
 
         token = self.tokenizer.current_token()
 
@@ -145,9 +139,8 @@ class CompilationEngine:
             else:
                 still_vars = False
 
-        self.close_tag('parameterList')
 
-    def compile_subroutine_body(self, subroutine_symbol_dict, class_field_symbols):
+    def compile_subroutine_body(self, jack_subroutine):
         '''Compile a parameter list for a subroutine'''
         #self.open_tag('subroutineBody')
 
