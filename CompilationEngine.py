@@ -1,21 +1,23 @@
 import sys
 from collections import namedtuple
-global labelCnt
-global staticSymbols
-global staticSymbolCnt
 
 INDENT = 2
-labelCnt = 1
 
-ClassSymbol = namedtuple('ClassSymbol', ['type', 'num'])
-staticSymbols = dict()
-staticSymbolCnt = 0
+ClassSymbols = namedtuple('ClassSymbols', ['type', 'num'])
+MethodSymbols = namedtuple('MethodSymbols', ['type', 'kind', 'num'])
 
-MethodSymbol = namedtuple('MethodSymbol', ['type', 'kind', 'num'])
+binary_op_actions = {'+': 'add',
+                     '-': 'sub',
+                     '*': 'call Math.multiply',
+                     '/': 'call Math.divide',
+                     '&': 'and',
+                     '|': 'or',
+                     '<': 'lt',
+                     '>': 'gt',
+                     '=': 'eq'}
 
-binaryOpActions = {'+': 'add', '-': 'sub', '*': 'call Math.multiply', ...
-                   '/': 'call Math.divide', '&': 'and', '|': 'or',
-                   '<': 'lt', '>': 'gt', '=': 'eq'}
+static_symbols = dict()
+label_count = 1
 
 class CompilationEngine:
     '''A compilation engine for the Jack programming language'''
@@ -42,8 +44,8 @@ class CompilationEngine:
         # {
         token = self.terminal_tag()
 
-        classFieldSymbols = self.compile_class_vars(class_name)
-        self.compile_class_subroutines(class_name, classFieldSymbols)
+        class_field_symbols = self.compile_class_vars(class_name)
+        self.compile_class_subroutines(class_name, class_field_symbols)
 
         # }
         token = self.terminal_tag()
@@ -51,11 +53,10 @@ class CompilationEngine:
 
     def compile_class_vars(self, class_name):
         '''Compile the class variable declarations'''
-        global staticSymbols
-        global staticSymbolCnt
+        global static_symbols
 
-        fieldSymbols = dict()
-        fieldSymbolCnt = 1
+        field_symbols = dict()
+        field_symbol_count = 1
         
         token = self.tokenizer.current_token()
         while token is not None and token.type == 'keyword' and\
@@ -83,11 +84,10 @@ class CompilationEngine:
                 varName = token.value
 
                 if(isStatic):
-                    staticSymbols[varName] = ClassSymbol(varType, staticSymbolCnt)
-                    staticSymbolCnt += 1
+                    static_symbols[varName] = ClassSymbols(varType, len(static_symbols))
                 else:
-                    fieldSymbols[varName] = ClassSymbol(varType, staticSymbolCnt)
-                    fieldSymbolCnt += 1
+                    field_symbols[varName] = ClassSymbols(varType, len(static_symbols))
+                    field_symbol_count += 1
 
                 token = self.tokenizer.advance()
                 still_vars = token == ('symbol', ',')
@@ -104,9 +104,9 @@ class CompilationEngine:
 
             #self.close_tag('classVarDec')
 
-        return fieldSymbols
+        return field_symbols
 
-    def compile_class_subroutines(self, class_name, classFieldSymbols):
+    def compile_class_subroutines(self, class_name, class_field_symbols):
         '''Compile the class subroutines'''
         
         token = self.tokenizer.current_token()
@@ -133,7 +133,7 @@ class CompilationEngine:
             token = self.terminal_tag()
 
             subroutineSymbolDict = dict()
-            self.compile_subroutine_body(subroutineSymbolDict, classFieldSymbols)
+            self.compile_subroutine_body(subroutineSymbolDict, class_field_symbols)
 
             token = self.tokenizer.current_token()
 
@@ -168,7 +168,7 @@ class CompilationEngine:
 
         self.close_tag('parameterList')
 
-    def compile_subroutine_body(self, subroutineSymbolDict, classFieldSymbols):
+    def compile_subroutine_body(self, subroutineSymbolDict, class_field_symbols):
         '''Compile a parameter list for a subroutine'''
         #self.open_tag('subroutineBody')
 
@@ -177,7 +177,7 @@ class CompilationEngine:
 
         self.compile_subroutine_vars(subroutineSymbolDict)
 
-        self.compile_statements(classFieldSymbols)
+        self.compile_statements(class_field_symbols)
 
         # }
         token = self.terminal_tag()
@@ -204,7 +204,7 @@ class CompilationEngine:
             # name
             token = self.terminal_tag(False, False)
             varName = token.value
-            varDict[varName] = MethodSymbol(varType, 'local', varCnt)
+            varDict[varName] = MethodSymbols(varType, 'local', varCnt)
             varCnt += 1
 
             # repeat as long as there are parameters, o.w prints the semi-colon
@@ -212,14 +212,14 @@ class CompilationEngine:
                 # name
                 token = self.terminal_tag(False, False)
                 varName = token.value
-                varDict[varName] = MethodSymbol(varType, 'var', varCnt)
+                varDict[varName] = MethodSymbols(varType, 'var', varCnt)
                 varCnt += 1
 
             token = self.tokenizer.current_token()
 
             #self.close_tag('varDec')
 
-    def compile_statements(self, classFieldSymbols=None, methodSymbols=None):
+    def compile_statements(self, class_field_symbols=None, methodSymbols=None):
         '''Compile subroutine statements'''
         self.open_tag('statements')
 
@@ -232,7 +232,7 @@ class CompilationEngine:
             elif token == ('keyword', 'while'):
                 self.compile_statement_while()
             elif token == ('keyword', 'let'):
-                self.compile_statement_let(classFieldSymbols, methodSymbols)
+                self.compile_statement_let(class_field_symbols, methodSymbols)
             elif token == ('keyword', 'do'):
                 self.compile_statement_do()
             elif token == ('keyword', 'return'):
@@ -244,7 +244,7 @@ class CompilationEngine:
 
     def compile_statement_if(self):
         '''Compile the if statment'''
-        global labelCnt
+        global label_count
         
         #self.open_tag('ifStatement')
         
@@ -262,16 +262,16 @@ class CompilationEngine:
         token = self.terminal_tag(False, False)
 
         self.ostream.write("not\n")
-        label1 = labelCnt
-        self.ostream.write("if-goto L" + str(labelCnt) + "\n")
-        labelCnt += 1
+        label1 = label_count
+        self.ostream.write("if-goto L" + str(label_count) + "\n")
+        label_count += 1
 
         # Compile inner statements
         self.compile_statements()
 
-        label2 = labelCnt
+        label2 = label_count
         self.ostream.write("goto L" + str(label2) + "\n")
-        labelCnt += 1
+        label_count += 1
         self.ostream.write("label L" + str(label1))
 
         # }
@@ -305,7 +305,7 @@ class CompilationEngine:
 
     def compile_statement_while(self):
         '''Compile the while statment'''
-        global labelCnt
+        global label_count
         
         #self.open_tag('whileStatement')
 
@@ -314,11 +314,11 @@ class CompilationEngine:
         # (
         token = self.terminal_tag(False, False)
 
-        label1 = labelCnt
+        label1 = label_count
         self.ostream.write("label L" + str(label1) + "\n")
-        labelCnt += 1
-        label2 = labelCnt
-        labelCnt += 1
+        label_count += 1
+        label2 = label_count
+        label_count += 1
         
         self.compile_expression()
 
@@ -341,9 +341,9 @@ class CompilationEngine:
 
         #self.close_tag('whileStatement')
 
-    def compile_statement_let(self, classFieldSymbols, methodSymbols):
+    def compile_statement_let(self, class_field_symbols, methodSymbols):
         '''Compile the let statment'''
-        global staticSymbols
+        global static_symbols
         
         #self.open_tag('letStatement')
 
@@ -366,13 +366,13 @@ class CompilationEngine:
 
         self.compile_expression()
 
-        if(varName in methodSymbols):
+        if varName in methodSymbols:
                 [varType, varKind, varNum] = methodSymbols[varName]
-        elif(varName in classFieldSymbols):
-                [varType, varNum] = classFieldSymbols[varName]
+        elif varName in class_field_symbols:
+                [varType, varNum] = class_field_symbols[varName]
                 varKind = "bla" #TODO: what type?
-        elif(varName in staticSymbols):
-                [varType, varNum] = staticSymbols[varName]
+        elif varName in static_symbols:
+                [varType, varNum] = static_symbols[varName]
                 varKind = "static"
         self.ostream.write("push " + varKind + " " + str(varNum))
 
@@ -452,11 +452,11 @@ class CompilationEngine:
         
         token = self.tokenizer.current_token()
         while token.value in '+-*/&|<>=':
-            binaryOp = token.value
+            binary_op = token.value
             #self.terminal_tag(False, False)
             
             self.compile_term()
-            self.ostream.write(binaryOpActions[binaryOp])
+            self.ostream.write(binary_op_actions[binary_op])
 
             token = self.terminal_tag(False, False)
             #token = self.tokenizer.current_token()
@@ -472,9 +472,9 @@ class CompilationEngine:
         # In case of unary operator, compile the term after the operator
         if token.type == 'symbol' and token.value in ['-', '~']:
             self.compile_term()
-            if(token.value == '-'):
+            if token.value == '-':
                 self.ostream.write('neg')
-            elif(token.value == '~'):
+            elif token.value == '~':
                 self.ostream.write('not')
         # In case of opening parenthesis for an expression
         elif token.value == '(':
@@ -512,18 +512,18 @@ class CompilationEngine:
         self.ostream.write(' '*self.indent)
         self.ostream.write('</{}>\n'.format(name))
 
-    def terminal_tag(self, token=None, toPrint=True):
+    def terminal_tag(self, token=None, to_print=True):
         '''Write a tag to the ostream, if a token is not provided
         use current token and advance the tokenizer. return the token'''
         if token is None:
             token = self.tokenizer.advance()
             print(token)
 
-        if(toPrint):
+        if to_print:
             self.ostream.write(' '*self.indent)
             self.ostream.write(
-                                        '<{0}> {1} </{0}>\n'.format(token.type, self.sanitize(token))
-                                )
+                '<{0}> {1} </{0}>\n'.format(token.type, self.sanitize(token))
+            )
 
         return token
 
