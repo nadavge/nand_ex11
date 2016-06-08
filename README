@@ -1,0 +1,22 @@
+Nadav Geva, nadavgeva4@gmail.com
+Or Sagy, orlusai@gmail.com
+===============================================================================
+
+                           Project 11 - Compiler - Code Generation
+                           ---------------------------------------
+
+
+Submitted Files
+---------------
+| README - This file!
+| Makefile - The makefile for the project
+| JackCompiler - An execution script for the compiler
+| JackCompiler.py - A Jack compiler implemented in python
+| JackTokenizer.py - The tokenizer for the Jack compiler/analyzer
+| CompilationEngine.py - The compilation engine for the Jack compiler
+| CompilationTypes.py - Compilation types module for Jack compiler
+| VMWriter.py - A code generation module for the compiler
+
+Remarks
+-------
+In order to run the project, you must make the project first :)

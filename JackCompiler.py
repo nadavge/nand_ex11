@@ -30,7 +30,7 @@ def compile_dir(dir_path):
 def main():
 	"""The main program, loading the file/files and calling the translator"""
 	if len(sys.argv) < 2:
-		print('usage: JackAnalyzer (file|dir)'.format(sys.argv[0]))
+		print('usage: JackCompiler (file|dir)'.format(sys.argv[0]))
 		sys.exit(1)
 
 	input_path = sys.argv[1]

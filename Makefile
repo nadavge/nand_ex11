@@ -1,5 +1,5 @@
 all:
-	chmod +x JackAnalyzer
+	chmod +x JackCompiler
 
-tar: JackAnalyzer JackAnalyzer.py JackTokenizer.py CompilationEngine.py README Makefile
-	tar cf project10.tar $^
+tar: JackCompiler JackCompiler.py JackTokenizer.py CompilationEngine.py CompilationTypes.py VMWriter.py README Makefile
+	tar cf project11.tar $^
