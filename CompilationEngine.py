@@ -400,6 +400,10 @@ class CompilationEngine:
                     else:
                         func_class = token_value
                     token = self.tokenizer.current_token()
+                # Default call is a method one, push this
+                else:
+                    arg_count = 1
+                    self.vm_writer.write_push('pointer', 0)
 
                 # If in-fact a function call
                 if token.value == '(':
