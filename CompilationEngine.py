@@ -5,8 +5,8 @@ from collections import namedtuple
 INDENT = 2
 binary_op_actions = {'+': 'add',
                      '-': 'sub',
-                     '*': 'call Math.multiply',
-                     '/': 'call Math.divide',
+                     '*': 'call Math.multiply 2',
+                     '/': 'call Math.divide 2',
                      '&': 'and',
                      '|': 'or',
                      '<': 'lt',
@@ -239,16 +239,16 @@ class CompilationEngine:
         '''Compile the while statment'''
         self.tokenizer.advance() # while
         self.tokenizer.advance() # (
-        
+
+        while_label = CompilationEngine.get_label()
+        false_label = CompilationEngine.get_label()
+
+        self.vm_writer.write_label(while_label)        
         self.compile_expression(jack_subroutine)
 
         self.tokenizer.advance() # )
         self.tokenizer.advance() # {
 
-        while_label = CompilationEngine.get_label()
-        false_label = CompilationEngine.get_label()
-
-        self.vm_writer.write_label(while_label)
         self.vm_writer.write_if(false_label)
 
         # Compile inner statements
@@ -375,7 +375,7 @@ class CompilationEngine:
             if token.value == '[': # Array
                 self.tokenizer.advance() # [
                 self.compile_expression(jack_subroutine)
-                self.vm_writer.write_push(token_var)
+                self.vm_writer.write_push_symbol(token_var)
                 self.vm_writer.write('add')
                 # rebase 'that' to point to var+index
                 self.vm_writer.write_pop('pointer', 1)
@@ -385,9 +385,12 @@ class CompilationEngine:
                 # Default class for function calls is this class
                 func_name = token_value
                 func_class = jack_subroutine.jack_class.name
+                # Used to mark whether to use the default call, a method one
+                default_call = True
                 arg_count = 0
 
                 if token.value == '.':
+                    default_call = False
                     self.tokenizer.advance() # .
                     # try to load the object of the method
                     func_obj = jack_subroutine.get_symbol(token_value)
@@ -400,13 +403,14 @@ class CompilationEngine:
                     else:
                         func_class = token_value
                     token = self.tokenizer.current_token()
-                # Default call is a method one, push this
-                else:
-                    arg_count = 1
-                    self.vm_writer.write_push('pointer', 0)
 
                 # If in-fact a function call
                 if token.value == '(':
+                    if default_call:
+                        # Default call is a method one, push this
+                        arg_count = 1
+                        self.vm_writer.write_push('pointer', 0)
+
                     self.tokenizer.advance() # (
                     arg_count += self.compile_expression_list(jack_subroutine)
                     self.vm_writer.write_call(func_class, func_name, arg_count)
