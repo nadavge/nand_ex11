@@ -50,11 +50,6 @@ class VMWriter:
 		kind = jack_symbol.kind
 		offset = jack_symbol.id # the offset in the segment
 
-		# if a field, load the object base address to 'this' from 'arg 0'
-		if kind == 'field':
-			self.ostream.write('push argument 0\n')
-			self.ostream.write('pop pointer 0\n')
-
 		segment = kind_to_segment[kind]
 		self.write_pop(segment, offset)
 
@@ -62,11 +57,6 @@ class VMWriter:
 		'''Push the value from the symbol to the stack'''
 		kind = jack_symbol.kind
 		offset = jack_symbol.id # the offset in the segment
-
-		# if a field, load the object base address to 'this' from 'arg 0'
-		if kind == 'field':
-			self.ostream.write('push argument 0\n')
-			self.ostream.write('pop pointer 0\n')
 
 		segment = kind_to_segment[kind]
 		self.write_push(segment, offset)

@@ -150,6 +150,9 @@ class CompilationEngine:
             self.vm_writer.write_call('Memory', 'alloc', 1)
             # Set 'this' in the function to allow it to return it
             self.vm_writer.write_pop('pointer', 0)
+        elif jack_subroutine.subroutine_type == 'method':
+            self.vm_writer.write_push('argument', 0)
+            self.vm_writer.write_pop('pointer', 0)
 
         self.compile_statements(jack_subroutine)
 
@@ -356,7 +359,7 @@ class CompilationEngine:
             self.vm_writer.write_string(token.value)
         elif token.type == 'keyword':
             if token.value == 'this':
-                self.vm_writer.write_push('argument', 0)
+                self.vm_writer.write_push('pointer', 0)
             else:
                 self.vm_writer.write_int(0) # null / false
                 if token.value == 'true':
@@ -406,9 +409,4 @@ class CompilationEngine:
                     self.tokenizer.advance() # )
                 # If a variable instead
                 elif token_var:
-                    if token_var.kind == 'field':
-                        self.vm_writer.write_push('argument', 0)
-                        self.vm_writer.write_pop('pointer', 0)
-                    segment = VMWriter.kind_to_segment[token_var.kind]
-                    offset = token_var.id
-                    self.vm_writer.write_push(segment, offset)
+                    self.vm_writer.write_push_symbol(token_var)
