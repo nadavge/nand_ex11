@@ -25,6 +25,16 @@ class CompilationEngine:
         self.tokenizer = tokenizer
         self.vm_writer = VMWriter.VMWriter(ostream)
 
+    @staticmethod
+    def get_label():
+        '''Return a label for use'''
+        global label_count
+
+        label = 'L{}'.format(label_count)
+        label_count += 1
+
+        return label
+
     def compile_class(self):
         '''Compile a class block'''
         self.tokenizer.advance() # class
@@ -137,7 +147,7 @@ class CompilationEngine:
         if jack_subroutine.subroutine_type == 'constructor':
             field_count = jack_subroutine.jack_class.field_symbols
             self.vm_writer.write_push('constant', field_count)
-            self.vm_writer.write_call('Memory.alloc', 1)
+            self.vm_writer.write_call('Memory', 'alloc', 1)
             # Set 'this' in the function to allow it to return it
             self.vm_writer.write_pop('pointer', 0)
 
@@ -169,7 +179,6 @@ class CompilationEngine:
 
     def compile_statements(self, jack_subroutine):
         '''Compile subroutine statements'''
-        self.open_tag('statements')
 
         check_statements = True
         while check_statements:
@@ -187,8 +196,6 @@ class CompilationEngine:
                 self.compile_statement_return(jack_subroutine)
             else:
                 check_statements = False
-
-        self.close_tag('statements')
 
     def compile_statement_if(self, jack_subroutine):
         '''Compile the if statement'''
@@ -239,13 +246,13 @@ class CompilationEngine:
         false_label = CompilationEngine.get_label()
 
         self.vm_writer.write_label(while_label)
-        self.vm_writer.write_if(end_label)
+        self.vm_writer.write_if(false_label)
 
         # Compile inner statements
         self.compile_statements(jack_subroutine)
         
         self.vm_writer.write_goto(while_label)
-        self.vm_writer.write_label(end_label)
+        self.vm_writer.write_label(false_label)
         
         self.tokenizer.advance() # }
 
@@ -321,7 +328,7 @@ class CompilationEngine:
         
         token = self.tokenizer.current_token()
         while token.value in '+-*/&|<>=':
-            binary_op = self.tokenizer.advance()
+            binary_op = self.tokenizer.advance().value
             
             self.compile_term(jack_subroutine)
             self.vm_writer.write(binary_op_actions[binary_op])
@@ -363,10 +370,9 @@ class CompilationEngine:
 
             token = self.tokenizer.current_token()
             if token.value == '[': # Array
-                array_var = jack_subroutine.get_symbol(token.value)
                 self.tokenizer.advance() # [
-                self.compile_expression(array_var)
-                self.vm_writer.write_push(jack_symbol)
+                self.compile_expression(jack_subroutine)
+                self.vm_writer.write_push(token_var)
                 self.vm_writer.write('add')
                 # rebase 'that' to point to var+index
                 self.vm_writer.write_pop('pointer', 1)
@@ -374,7 +380,10 @@ class CompilationEngine:
                 self.tokenizer.advance() # ]
             else:
                 # Default class for function calls is this class
+                func_name = token_value
                 func_class = jack_subroutine.jack_class.name
+                arg_count = 0
+
                 if token.value == '.':
                     self.tokenizer.advance() # .
                     # try to load the object of the method
@@ -382,12 +391,11 @@ class CompilationEngine:
                     func_name = self.tokenizer.advance().value # function name
                     # If this is an object, call as method
                     if func_obj:
-                        func_class = jack_symbol.type # Use the class of the object
+                        func_class = token_var.type # Use the class of the object
                         arg_count = 1 # Add 'this' to args
-                        self.vm_writer.write_push(jack_symbol) # push "this"
+                        self.vm_writer.write_push_symbol(token_var) # push "this"
                     else:
                         func_class = func_name
-                        arg_count = 0
                     token = self.tokenizer.current_token()
 
                 # If in-fact a function call
