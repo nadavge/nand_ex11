@@ -230,7 +230,7 @@ class CompilationEngine:
 
             self.tokenizer.advance() # }
 
-        self.vm_writer.write_label(false_label)
+        self.vm_writer.write_label(end_label)
 
     def compile_statement_while(self, jack_subroutine):
         '''Compile the while statment'''
@@ -301,7 +301,7 @@ class CompilationEngine:
         if token != ('symbol', ';'):
             self.compile_expression(jack_subroutine)
         else:
-            self.vm_writer.write_push('const', 0)
+            self.vm_writer.write_int(0)
 
         self.vm_writer.write_return()
         self.tokenizer.advance() # ;
@@ -395,7 +395,7 @@ class CompilationEngine:
                         arg_count = 1 # Add 'this' to args
                         self.vm_writer.write_push_symbol(token_var) # push "this"
                     else:
-                        func_class = func_name
+                        func_class = token_value
                     token = self.tokenizer.current_token()
 
                 # If in-fact a function call

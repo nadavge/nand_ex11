@@ -28,11 +28,12 @@ class VMWriter:
 
 	def write_function(self, jack_subroutine):
 		'''Write a function header for a Jack subroutine'''
+		class_name = jack_subroutine.jack_class.name
 		name = jack_subroutine.name
 		local_vars = jack_subroutine.var_symbols
 		subroutine_type = jack_subroutine.subroutine_type
 
-		self.ostream.write('function {0} {1}\n'.format(name, local_vars))
+		self.ostream.write('function {}.{} {}\n'.format(class_name, name, local_vars))
 
 	def write_return(self):
 		'''Write the return statement'''
@@ -72,11 +73,11 @@ class VMWriter:
 
 	def write_pop(self, segment, offset):
 		'''Pop the value in the top of the stack to segment:offset'''
-		self.ostream.write('pop {0} {1}'.format(segment, offset))
+		self.ostream.write('pop {0} {1}\n'.format(segment, offset))
 
 	def write_push(self, segment, offset):
 		'''Push the value to the stack from segment:offset'''
-		self.ostream.write('push {0} {1}'.format(segment, offset))
+		self.ostream.write('push {0} {1}\n'.format(segment, offset))
 
 	def write(self, action):
 		'''Write something'''
