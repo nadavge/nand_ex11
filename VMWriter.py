@@ -79,6 +79,7 @@ class VMWriter:
 
 	def write_string(self, s):
 		'''Allocates a new string, and appends all the chars one-by-one'''
+		s = s[1:-1]
 		self.write_int(len(s))
 		self.write_call('String', 'new', 1)
 		for c in s:

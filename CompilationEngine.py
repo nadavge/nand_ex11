@@ -275,10 +275,14 @@ class CompilationEngine:
             # Add the base and index
             self.vm_writer.write_push_symbol(jack_symbol)
             self.vm_writer.write('add')
-            # Base 'that' at base+index
-            self.vm_writer.write_pop('pointer', 1)
+            # Base 'that' at base+index, stored in stack
+            # to avoid the expression assigned changing pointer:1, we don't
+            # pop it yet
             self.compile_expression(jack_subroutine) # Expression to assign
-            self.vm_writer.write_pop('that', 0)
+            self.vm_writer.write_pop('temp', 0) # Store assigned value in temp
+            self.vm_writer.write_pop('pointer', 1) # Restore destination
+            self.vm_writer.write_push('temp', 0) # Restore assigned value
+            self.vm_writer.write_pop('that', 0) # Store in target
         else:
             self.tokenizer.advance() # =
             self.compile_expression(jack_subroutine) # Expression to assign
