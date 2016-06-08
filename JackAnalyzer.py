@@ -5,14 +5,14 @@ import CompilationEngine
 
 def compile_file(file_path):
 	'''Compile a file by its path, save the result to a file
-	with the same name and an XML suffix'''
+	with the same name and a vm suffix'''
 		
 	with open(file_path, 'r') as ifile:
 		file_name = os.path.basename(file_path)
 		file_path_no_ext, _ = os.path.splitext(file_path)
 		file_name_no_ext, _ = os.path.splitext(file_name)
 
-		ofile_path = file_path_no_ext+'.xml'
+		ofile_path = file_path_no_ext+'.vm'
 		with open(ofile_path, 'w') as ofile:
 			tokenizer = JackTokenizer.JackTokenizer(ifile.read())
 			compiler = CompilationEngine.CompilationEngine(tokenizer, ofile)

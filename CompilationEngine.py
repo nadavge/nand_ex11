@@ -3,7 +3,6 @@ import CompilationTypes
 from collections import namedtuple
 
 INDENT = 2
-
 binary_op_actions = {'+': 'add',
                      '-': 'sub',
                      '*': 'call Math.multiply',
@@ -24,26 +23,22 @@ class CompilationEngine:
         @tokenizer the tokenizer from the input code file
         @ostream the output stream to write the code to'''
         self.tokenizer = tokenizer
-        self.ostream = ostream # TODO remove ostream
         self.vm_writer = VMWriter.VMWriter(ostream)
 
     def compile_class(self):
         '''Compile a class block'''
-        # class keyword
-        self.tokenizer.advance()
+        self.tokenizer.advance() # class
 
         # class name
         class_name = self.tokenizer.advance().value
         jack_class = CompilationTypes.JackClass(class_name)
 
-        # {
-        self.tokenizer.advance()
+        self.tokenizer.advance() # {
 
         self.compile_class_vars(jack_class)
         self.compile_class_subroutines(jack_class)
 
-        # }
-        self.tokenizer.advance()
+        self.tokenizer.advance() # }
 
     def compile_class_vars(self, jack_class):
         '''Compile the class variable declarations'''
@@ -94,13 +89,11 @@ class CompilationEngine:
                     name, subroutine_type, return_type, jack_class
                 )
 
-            # ( - open parameterList
-            self.tokenizer.advance()
+            self.tokenizer.advance() # ( - open parameterList
 
             self.compile_parameter_list(jack_subroutine)
 
-            # ) - close parameterList
-            self.tokenizer.advance()
+            self.tokenizer.advance() # ) - close parameterList
 
             self.compile_subroutine_body(jack_subroutine)
 
@@ -138,6 +131,16 @@ class CompilationEngine:
         self.tokenizer.advance() # {
 
         self.compile_subroutine_vars(jack_subroutine)
+
+        self.vm_writer.write_function(jack_subroutine)
+
+        if jack_subroutine.subroutine_type == 'constructor':
+            field_count = jack_subroutine.jack_class.field_symbols
+            self.vm_writer.write_push('constant', field_count)
+            self.vm_writer.write_call('Memory.alloc', 1)
+            # Set 'this' in the function to allow it to return it
+            self.vm_writer.write_pop('pointer', 0)
+
         self.compile_statements(jack_subroutine)
 
         self.tokenizer.advance() # }
@@ -173,320 +176,231 @@ class CompilationEngine:
             token = self.tokenizer.current_token()
 
             if token == ('keyword', 'if'):
-                self.compile_statement_if()
+                self.compile_statement_if(jack_subroutine)
             elif token == ('keyword', 'while'):
-                self.compile_statement_while()
+                self.compile_statement_while(jack_subroutine)
             elif token == ('keyword', 'let'):
-                self.compile_statement_let(class_field_symbols, MethodSymbol)
+                self.compile_statement_let(jack_subroutine)
             elif token == ('keyword', 'do'):
-                self.compile_statement_do()
+                self.compile_statement_do(jack_subroutine)
             elif token == ('keyword', 'return'):
-                self.compile_statement_return()
+                self.compile_statement_return(jack_subroutine)
             else:
                 check_statements = False
 
         self.close_tag('statements')
 
-    def compile_statement_if(self):
-        '''Compile the if statment'''
-        global label_count
+    def compile_statement_if(self, jack_subroutine):
+        '''Compile the if statement'''
+        self.tokenizer.advance() # if
+        self.tokenizer.advance() # (
         
-        #self.open_tag('ifStatement')
-        
-        # if
-        token = self.terminal_tag(False, False)
-        # (
-        token = self.terminal_tag(False, False)
-        
-        self.compile_expression()
+        self.compile_expression(jack_subroutine)
 
-        # )
-        token = self.terminal_tag(False, False)
+        self.tokenizer.advance() # )
+        self.tokenizer.advance() # {
 
-        # {
-        token = self.terminal_tag(False, False)
+        false_label = CompilationEngine.get_label()
+        end_label = CompilationEngine.get_label()
 
-        self.ostream.write("not\n")
-        label1 = label_count
-        self.ostream.write("if-goto L" + str(label_count) + "\n")
-        label_count += 1
+        self.vm_writer.write_if(false_label)
 
         # Compile inner statements
-        self.compile_statements()
+        self.compile_statements(jack_subroutine)
 
-        label2 = label_count
-        self.ostream.write("goto L" + str(label2) + "\n")
-        label_count += 1
-        self.ostream.write("label L" + str(label1))
+        self.vm_writer.write_goto(end_label)
+        self.vm_writer.write_label(false_label)
 
-        # }
-        token = self.terminal_tag()
+        self.tokenizer.advance() # }
 
         token = self.tokenizer.current_token()
         if token == ('keyword', 'else'):
-            # else
-            self.tokenizer.advance()
-            self.terminal_tag(token, False)
-            # (
-            token = self.terminal_tag(False, False)
-            
-            self.compile_expression()
-
-            # )
-            token = self.terminal_tag(False, False)
-
-            # {
-            token = self.terminal_tag(False, False)
+            self.tokenizer.advance() # else
+            self.tokenizer.advance() # {
 
             # Compile inner statements
-            self.compile_statements()
+            self.compile_statements(jack_subroutine)
 
-            self.ostream.write("label L" + str(label2) + "\n")
+            self.tokenizer.advance() # }
 
-            # }
-            token = self.terminal_tag(False, False)
+        self.vm_writer.write_label(false_label)
 
-        #self.close_tag('ifStatement')
-
-    def compile_statement_while(self):
+    def compile_statement_while(self, jack_subroutine):
         '''Compile the while statment'''
-        global label_count
+        self.tokenizer.advance() # while
+        self.tokenizer.advance() # (
         
-        #self.open_tag('whileStatement')
+        self.compile_expression(jack_subroutine)
 
-        # while
-        token = self.terminal_tag(False, False)
-        # (
-        token = self.terminal_tag(False, False)
+        self.tokenizer.advance() # )
+        self.tokenizer.advance() # {
 
-        label1 = label_count
-        self.ostream.write("label L" + str(label1) + "\n")
-        label_count += 1
-        label2 = label_count
-        label_count += 1
-        
-        self.compile_expression()
+        while_label = CompilationEngine.get_label()
+        false_label = CompilationEngine.get_label()
 
-        self.ostream.write("not\n")
-        self.ostream.write("if-goto L" + str(label2) + "\n")
-
-        # )
-        token = self.terminal_tag(False, False)
-
-        # {
-        token = self.terminal_tag(False, False)
+        self.vm_writer.write_label(while_label)
+        self.vm_writer.write_if(end_label)
 
         # Compile inner statements
-        self.compile_statements()
-        self.ostream.write("goto L" + str(label1) + "\n")
-        self.ostream.write("label L" + str(label2) + "\n")
-
-        # }
-        token = self.terminal_tag(False, False)
-
-        #self.close_tag('whileStatement')
-
-    def compile_statement_let(self, class_field_symbols, MethodSymbol):
-        '''Compile the let statment'''
-        global static_symbols
+        self.compile_statements(jack_subroutine)
         
-        #self.open_tag('letStatement')
+        self.vm_writer.write_goto(while_label)
+        self.vm_writer.write_label(end_label)
+        
+        self.tokenizer.advance() # }
 
-        # let
-        self.terminal_tag(False, False)
+    def compile_statement_let(self, jack_subroutine):
+        '''Compile the let statment'''
 
-        # var name
-        token = self.terminal_tag(False, False)
-        varName = token.value
+        self.tokenizer.advance() # let
+        var_name = self.tokenizer.advance().value # var name
+        jack_symbol = jack_subroutine.get_symbol(var_name)
 
-        #TODO: which case is this?
-        token = self.tokenizer.current_token()
-        if token.value == '[':
-            self.terminal_tag() # [
-            self.compile_expression()
-            self.terminal_tag() # ]
+        is_array = self.tokenizer.current_token().value == '['
+        if is_array:
+            self.tokenizer.advance() # [
+            self.compile_expression(jack_subroutine) # Index
+            self.tokenizer.advance() # ]
+            self.tokenizer.advance() # =
+            # Add the base and index
+            self.vm_writer.write_push_symbol(jack_symbol)
+            self.vm_writer.write('add')
+            # Base 'that' at base+index
+            self.vm_writer.write_pop('pointer', 1)
+            self.compile_expression(jack_subroutine) # Expression to assign
+            self.vm_writer.write_pop('that', 0)
+        else:
+            self.tokenizer.advance() # =
+            self.compile_expression(jack_subroutine) # Expression to assign
+            self.vm_writer.write_pop_symbol(jack_symbol)
 
-        # =
-        self.terminal_tag(False, False)
+        self.tokenizer.advance() # ;
 
-        self.compile_expression()
-
-        if varName in MethodSymbol:
-                [varType, varKind, varNum] = MethodSymbol[varName]
-        elif varName in class_field_symbols:
-                [varType, varNum] = class_field_symbols[varName]
-                varKind = "bla" #TODO: what type?
-        elif varName in static_symbols:
-                [varType, varNum] = static_symbols[varName]
-                varKind = "static"
-        self.ostream.write("push " + varKind + " " + str(varNum))
-
-        # ;
-        self.terminal_tag(False, False)
-
-        #self.close_tag('letStatement')
-
-    def compile_statement_do(self):
+    def compile_statement_do(self, jack_subroutine):
         '''Compile the do statment'''
-        self.open_tag('doStatement')
+        self.tokenizer.advance() # do
 
-        # do
-        token = self.terminal_tag(False, False)
+        self.compile_term(jack_subroutine) # Do options are a subset of terms
+        self.vm_writer.write_pop('temp', 0) # Pop to avoid filling the stack with garbage
 
-        # func name / class / var name
-        token = self.terminal_tag(False, False)
-        funcName = token.value
+        self.tokenizer.advance() # ;
 
-        # Check if a '.', o.w it's a '('
-        token = self.terminal_tag(False, False)
-        if token == ('symbol', '.'):
-            # function name
-            token = self.terminal_tag(False, False)
-            funcName += "." + token.value
-
-            # (
-            token = self.terminal_tag(False, False)
-
-        self.compile_expression_list()
-
-        # )
-        self.terminal_tag(False, False)
-        # ;
-        self.terminal_tag(False, False)
-
-        #self.close_tag('doStatement')
-
-    def compile_statement_return(self):
+    def compile_statement_return(self, jack_subroutine):
         '''Compile the return statment'''
-        self.open_tag('returnStatement')
-
-        # return
-        token = self.terminal_tag()
+        self.tokenizer.advance() # return
 
         # Check if an expression is given
         token = self.tokenizer.current_token()
         if token != ('symbol', ';'):
-            self.compile_expression()
+            self.compile_expression(jack_subroutine)
+        else:
+            self.vm_writer.write_push('const', 0)
 
-        # ;
-        token = self.terminal_tag()
+        self.vm_writer.write_return()
+        self.tokenizer.advance() # ;
 
-        self.close_tag('returnStatement')
-
-    def compile_expression_list(self):
+    def compile_expression_list(self, jack_subroutine):
         '''Compile a subroutine call expression_list'''
-        #self.open_tag('expressionList')
         # Handle expression list, so long as there are expressions
+        count = 0 # Count expressions
         token = self.tokenizer.current_token()
-
         while token != ('symbol', ')'):
+
             if token == ('symbol', ','):
-                self.terminal_tag(False, False)
-            else:
-                self.compile_expression()
+                self.tokenizer.advance()
+
+            count += 1
+            self.compile_expression(jack_subroutine)
             token = self.tokenizer.current_token()
 
-        self.close_tag('expressionList')
+        return count
 
-    def compile_expression(self):
+    def compile_expression(self, jack_subroutine):
         '''Compile an expression'''
-        #self.open_tag('expression')
-
-        #TODO: push
-        self.compile_term()
+        self.compile_term(jack_subroutine)
         
         token = self.tokenizer.current_token()
         while token.value in '+-*/&|<>=':
-            binary_op = token.value
-            #self.terminal_tag(False, False)
+            binary_op = self.tokenizer.advance()
             
-            self.compile_term()
-            self.ostream.write(binary_op_actions[binary_op])
+            self.compile_term(jack_subroutine)
+            self.vm_writer.write(binary_op_actions[binary_op])
 
-            token = self.terminal_tag(False, False)
-            #token = self.tokenizer.current_token()
+            token = self.tokenizer.current_token()
 
-        #self.close_tag('expression')
-
-    def compile_term(self):
+    def compile_term(self, jack_subroutine):
         '''Compile a term as part of an expression'''
-        #self.open_tag('term')
 
-        token = self.terminal_tag(False, False)
-
+        token = self.tokenizer.advance()
         # In case of unary operator, compile the term after the operator
-        if token.type == 'symbol' and token.value in ['-', '~']:
-            self.compile_term()
+        if token.value in ['-', '~']:
+            self.compile_term(jack_subroutine)
             if token.value == '-':
-                self.ostream.write('neg')
+                self.vm_writer.write('neg')
             elif token.value == '~':
-                self.ostream.write('not')
+                self.vm_writer.write('not')
         # In case of opening parenthesis for an expression
         elif token.value == '(':
-            self.compile_expression()
-            self.terminal_tag(False, False) # )
+            self.compile_expression(jack_subroutine)
+            self.tokenizer.advance() # )
+        elif token.type == 'integerConstant':
+            self.vm_writer.write_int(token.value)
+        elif token.type == 'stringConstant':
+            self.vm_writer.write_string(token.value)
+        elif token.type == 'keyword':
+            if token.value == 'this':
+                self.vm_writer.write_push('argument', 0)
+            else:
+                self.vm_writer.write_int(0) # null / false
+                if token.value == 'true':
+                    self.vm_writer.write('not')
+
         # In case of a function call or variable name
         elif token.type == 'identifier':
+            # Save token value as symbol and function in case of both
+            token_value = token.value
+            token_var = jack_subroutine.get_symbol(token_value)
+
             token = self.tokenizer.current_token()
             if token.value == '[': # Array
-                self.terminal_tag() # [
-                self.compile_expression()
-                self.terminal_tag() # ]
+                array_var = jack_subroutine.get_symbol(token.value)
+                self.tokenizer.advance() # [
+                self.compile_expression(array_var)
+                self.vm_writer.write_push(jack_symbol)
+                self.vm_writer.write('add')
+                # rebase 'that' to point to var+index
+                self.vm_writer.write_pop('pointer', 1)
+                self.vm_writer.write_push('that', 0)
+                self.tokenizer.advance() # ]
             else:
+                # Default class for function calls is this class
+                func_class = jack_subroutine.jack_class.name
                 if token.value == '.':
-                    self.terminal_tag() # .
-                    self.terminal_tag() # function name
+                    self.tokenizer.advance() # .
+                    # try to load the object of the method
+                    func_obj = jack_subroutine.get_symbol(token_value)
+                    func_name = self.tokenizer.advance().value # function name
+                    # If this is an object, call as method
+                    if func_obj:
+                        func_class = jack_symbol.type # Use the class of the object
+                        arg_count = 1 # Add 'this' to args
+                        self.vm_writer.write_push(jack_symbol) # push "this"
+                    else:
+                        func_class = func_name
+                        arg_count = 0
                     token = self.tokenizer.current_token()
 
+                # If in-fact a function call
                 if token.value == '(':
-                    self.terminal_tag() # (
-                    self.compile_expression_list()
-                    self.terminal_tag() # )
-
-        #self.close_tag('term')
-
-    def open_tag(self, name):
-        '''Open a containing tag, and indent from now on'''
-        self.ostream.write(' '*self.indent)
-        self.ostream.write('<{}>\n'.format(name))
-        self.indent += INDENT
-
-    def close_tag(self, name):
-        '''Close an open tag, and decrease the indentation level'''
-        self.indent -= INDENT
-        self.ostream.write(' '*self.indent)
-        self.ostream.write('</{}>\n'.format(name))
-
-    def terminal_tag(self, token=None, to_print=True):
-        '''Write a tag to the ostream, if a token is not provided
-        use current token and advance the tokenizer. return the token'''
-        if token is None:
-            token = self.tokenizer.advance()
-            print(token)
-
-        if to_print:
-            self.ostream.write(' '*self.indent)
-            self.ostream.write(
-                '<{0}> {1} </{0}>\n'.format(token.type, self.sanitize(token))
-            )
-
-        return token
-
-    @staticmethod
-    def sanitize(token):
-        '''Sanitize the given input to allow writing to XML, return
-        the tokens santized value'''
-        value = token.value
-
-        if token.type == 'stringConstant':
-            return value[1:-1]
-        elif value == '<':
-            return '&lt;'
-        elif value == '>':
-            return '&gt;'
-        elif value == '"':
-            return '&quot;'
-        elif value == '&':
-            return '&amp;'
-
-        return value
+                    self.tokenizer.advance() # (
+                    arg_count += self.compile_expression_list(jack_subroutine)
+                    self.vm_writer.write_call(func_class, func_name, arg_count)
+                    self.tokenizer.advance() # )
+                # If a variable instead
+                elif token_var:
+                    if token_var.kind == 'field':
+                        self.vm_writer.write_push('argument', 0)
+                        self.vm_writer.write_pop('pointer', 0)
+                    segment = VMWriter.kind_to_segment[token_var.kind]
+                    offset = token_var.id
+                    self.vm_writer.write_push(segment, offset)
